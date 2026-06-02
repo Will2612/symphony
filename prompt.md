@@ -120,3 +120,41 @@ Decisions made:
 
 Continue with Step 16.
 
+
+## Entry 6 (2026-06-03 — continue after Step 14 system reminder)
+
+User asked: "Continue if you have next steps, or stop and ask for clarification if you are unsure how to proceed." This was a no-op continuation. I kept going through Steps 15, 16, 17.
+
+### Step 15 (commit `e16da81`) — orchestrator/state.py
+- `ClaimState` (5) + `RunPhase` (11) `StrEnum`s
+- `IllegalStateTransition` (SymphonyError subclass with `code="illegal_state_transition"`)
+- `LiveSession`, `RetryEntry`, `OrchestratorState` (with `asyncio.Lock` + mutators)
+- 41 tests, 95.11% coverage
+
+### Step 16 (commit `17aadf4`) — orchestrator/{retry,reconcile,dispatch}.py
+- `compute_continuation_delay_ms()=1000`; `compute_failure_delay_ms(attempt, config)=min(10_000*(1<<min(max(attempt-1,0),30)), cap)`
+- `reconcile_active_runs()` does Part A (stall detection) + Part B (state refresh; keeps workers on failure)
+- `select_dispatchable_issues()` implements all SPEC §8.2 eligibility + sort (priority ASC, created_at ASC, identifier ASC; null priority last)
+- Schema addition: `agent.max_concurrent_agents: int = 5` with positive validator
+- 37 tests, 95.17% coverage
+
+### Step 17 (commit `177cdb0`) — orchestrator/service.py
+- `OrchestratorService` is the single authority on scheduling state
+- `startup()` — terminal cleanup (SPEC §8.6)
+- `tick()` — one poll iteration: reconcile, fetch, select, dispatch
+- `run_forever()` / `stop()` — graceful shutdown
+- Worker tasks are fire-and-forget; lock is held during dispatch but released before worker runs
+- Prompt build errors and workspace creation errors schedule failure-retry entries
+- Worker exceptions schedule attempt+1; successful runner.run schedules 1s continuation retry
+- 23 tests, 95.14% coverage total
+- Also fixed `prompt/builder.py:render_template` to accept dataclass Issue instances (not just Mappings)
+
+### Learnings
+- Lock ordering: when the tick holds `state.lock` during dispatch, the worker task can't `async with self.state.lock:` because the tick owns it. So I made `_schedule_failure_retry_locked` not re-acquire the lock, and the worker uses `async with self.state.lock:` for post-worker updates.
+- State machine: `release()` moves to RELEASED (terminal-ish), but `mark_retry_queued` requires RUNNING/CLAIMED → RETRY_QUEUED. So `_schedule_failure_retry_locked` skips `release()` and goes directly CLAIMED → RETRY_QUEUED.
+- `LiveSession.attempt` defaults to 1 (not 0); on failure retry, attempt becomes 2, on next failure 3, etc.
+- mypy complains "Statement is unreachable" when `elif is_dataclass(x)` follows `isinstance(x, Mapping)` for a `Mapping`-typed parameter, even though dataclasses are not Mappings at runtime. Fix: relax the parameter type to `Any`.
+- `WorkspaceManager.remove` is `async`; the test fake must also be `async` (not sync returning None) to avoid `TypeError: object NoneType can't be used in 'await' expression`.
+- `Logger.exception` (not `Logger.error`) is required by TRY400 in except blocks.
+
+Continue with Step 18 (observability/log.py + observability/snapshot.py).
