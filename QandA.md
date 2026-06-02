@@ -18,7 +18,25 @@ Recommendation in plan-review gap analysis: drop for v1 (not spec-mandated; adds
 ### G-Q5
 
 ### G-Q5 — Default `codex.approval_policy` / `codex.thread_sandbox` / `codex.turn_sandbox_policy` for the OpenCode runner
-Raised by: plan review 2026-06-02 (checklist M13). _Not yet resolved._
+
+Raised by: plan review 2026-06-02 (checklist M13).
+Context: SPEC §5.3.6 says these are "implementation-defined" defaults. SPEC §10.5 says: "Auto-approve command execution approvals for the session. Auto-approve file-change approvals for the session. Treat user-input-required turns as hard failure." The Elixir reference uses `reject` + `workspace-write` + workspace-rooted turn-sandbox-policy. For OpenCode, the equivalent depends on what the ACP protocol actually supports.
+
+**Resolution (2026-06-02):** High-trust default that mirrors SPEC §10.5 wording:
+- `codex.approval_policy = "auto-approve"` (both command and file-change prompts are auto-approved for the session).
+- `codex.thread_sandbox = "workspace-write"` (the agent process can read/write the workspace and read elsewhere; cannot write outside it).
+- `codex.turn_sandbox_policy = { writable_roots: [workspace_abs_path] }` (per-turn, the writable root is the specific issue's workspace).
+- `user_input_required` events from the runner are surfaced to the orchestrator as a hard failure (per SPEC §10.5) and the run attempt is marked `FAILED` with `code: "user_input_required"`.
+- These are the v1 defaults; users can override per-WORKFLOW.md.
+
+Concretely this means:
+- `python/src/symphony/runner/opencode.py` issues an ACP `session.set_policy` (or equivalent) message at session start with the values above; for every new turn it re-issues with the per-turn `writable_roots` set to that issue's workspace.
+- Checklist item **M13** is fully closed.
+- The `codex.*` config field names in the Pydantic schema stay the same (SPEC §5.3.6 names them), even though the runner is OpenCode — they're just config keys; their semantics are runner-specific.
+
+### G-Q6
+
+_(placeholder — next question, if any, will be added here)_
 
 ---
 
