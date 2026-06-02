@@ -14,13 +14,15 @@ Each finding has:
   - SPEC §8.6, §18.1
   - Action: add explicit step + test entry in `plan.md`; unit test in `tests/unit/test_orchestrator_service.py::test_startup_terminal_cleanup_runs_workspace_remove`; BDD scenario in `orchestrator_dispatch.feature`.
 
-- [ ] **C2** — Run-attempt state machine not in plan
+- [x] **C2** — Run-attempt state machine not in plan
   - SPEC §7.2 (PreparingWorkspace → BuildingPrompt → LaunchingAgentProcess → InitializingSession → StreamingTurn → Finishing → Succeeded / Failed / TimedOut / Stalled / CanceledByReconciliation)
   - Action: add `RunPhase` enum to `orchestrator/state.py`; add `current_phase` field to `LiveSession`; unit tests in `test_orchestrator_state.py`.
+  - Status: closed 2026-06-02 by G-Q1 resolution (QandA.md). `RunPhase` enum + transition graph decided.
 
-- [ ] **C3** — Issue orchestration claim states not in plan
+- [x] **C3** — Issue orchestration claim states not in plan
   - SPEC §7.1 (Unclaimed / Claimed / Running / RetryQueued / Released)
   - Action: add `ClaimState` enum; expose on `LiveSession`; document the state-transition rules; unit test in `test_dispatch.py::test_claim_state_transitions`.
+  - Status: closed 2026-06-02 by G-Q1 resolution (QandA.md). `ClaimState` enum + transition graph decided.
 
 - [ ] **C4** — Typed domain entities (Workspace, LiveSession, RunAttempt, RetryEntry, OrchestratorState) not explicit
   - SPEC §4.1.4, §4.1.5, §4.1.6, §4.1.7, §4.1.8
