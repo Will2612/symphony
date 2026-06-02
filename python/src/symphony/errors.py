@@ -98,39 +98,44 @@ class GitHubPaginationMissingLink(SymphonyError):
     code = "github_pagination_missing_link"
 
 
-class CodexNotFound(SymphonyError):
+class RunnerError(SymphonyError):
+    """Base class for all runner-layer errors. Catching this catches
+    every error category from SPEC §10.6."""
+
+
+class CodexNotFound(RunnerError):
     code = "codex_not_found"
 
 
-class InvalidWorkspaceCwd(SymphonyError):
+class InvalidWorkspaceCwd(RunnerError):
     code = "invalid_workspace_cwd"
 
 
-class ResponseTimeout(SymphonyError):
+class ResponseTimeout(RunnerError):
     code = "response_timeout"
 
 
-class TurnTimeout(SymphonyError):
+class TurnTimeout(RunnerError):
     code = "turn_timeout"
 
 
-class PortExit(SymphonyError):
+class PortExit(RunnerError):
     code = "port_exit"
 
 
-class ResponseError(SymphonyError):
+class ResponseError(RunnerError):
     code = "response_error"
 
 
-class TurnFailed(SymphonyError):
+class TurnFailed(RunnerError):
     code = "turn_failed"
 
 
-class TurnCancelled(SymphonyError):
+class TurnCancelled(RunnerError):
     code = "turn_cancelled"
 
 
-class TurnInputRequired(SymphonyError):
+class TurnInputRequired(RunnerError):
     code = "turn_input_required"
 
 
@@ -213,6 +218,7 @@ __all__ = [
     "PortExit",
     "ResponseError",
     "ResponseTimeout",
+    "RunnerError",
     "SymphonyError",
     "TemplateParseError",
     "TemplateRenderError",
