@@ -56,3 +56,19 @@ Interpretation / follow-up actions:
 Outcome: created `checklist.md` and `QandA.md`; first commits of each. Future plan reviews add to these files and commit.
 
 ---
+
+## Entry 4 — Pre-flight permission grant before each build
+
+**[Will]**
+before each build operation, ask me for full read and write access to this repo to avoid execution interupt per permission requirement.
+
+Interpretation / follow-up actions:
+- Before starting any new build/installation step (pip install, mkdir, file creation, make, pytest, ruff, mypy, git commit, etc.), the assistant MUST pause and ask Will for full read+write access scoped to the current build.
+- "Full read and write" means broad permission for that step — Will will pre-approve the relevant operations so the assistant can execute the entire step without per-command permission interruptions.
+- The assistant lists the exact operations it intends to perform in the request, so Will can decide whether to grant.
+- After the step completes, the grant is implicitly revoked; the next step starts with another request.
+- This is in addition to (not a replacement for) the Entry 2 commit-per-file rule and the Entry 3 plan-review workflow.
+
+Outcome: applied to all future build steps starting with TDD Step 1.
+
+---
