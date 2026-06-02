@@ -35,6 +35,8 @@ Confirmed locally (read-only, before any code is written):
 
 ## 1. Project Layout
 
+> **Why `src/symphony/` (src layout) and not a flat `symphony/` package:** src layout makes the wheel importable only when installed (no accidental import from a stale working tree), forces tests to use the installed package (matching what users will run), and is the modern best practice for libraries. Editable install (`pip install -e`) handles `import symphony` exactly the same way; the user-visible CLI command `symphony` is unaffected.
+
 ```
 python/
 ├── pyproject.toml             # name=symphony-py; ruff + mypy + pytest config
