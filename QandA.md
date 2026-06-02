@@ -13,14 +13,10 @@ Context: The Elixir reference supports `tracker.assignee: "me"` (resolves to vie
 Question: ship v1 with assignee-based routing, or drop it (and add later if needed)?
 Recommendation in plan-review gap analysis: drop for v1 (not spec-mandated; adds a `viewer` query and a config key). Resolution will determine whether checklist item M6 closes as "done" or "dropped".
 
-### G-Q3 — Python distribution name (PyPI conflict with existing `symphony`)
-Raised by: plan review 2026-06-02 (checklist M12). _Not yet resolved._
+### G-Q4
 
 ### G-Q4 — Default `codex.command` for the OpenCode runner
-
-Raised by: plan review 2026-06-02 (checklist M13).
-Context: SPEC §5.3.6 says default is `codex app-server`. For the OpenCode runner, the equivalent is either `opencode acp` (long-lived stdio session, supports continuation on the same thread) or `opencode run --format json` (one-shot, no continuation). The trade-off is fidelity to SPEC §10.2 ("continuation turns on the same live thread") vs. time-to-ship.
-Recommendation in gap analysis: full ACP for v1 (matches SPEC §10.2 exactly), test with a fake stdio server.
+Raised by: plan review 2026-06-02 (checklist M13). _Not yet resolved._
 
 ### G-Q5 — Default `codex.approval_policy` / `codex.thread_sandbox` / `codex.turn_sandbox_policy` for the OpenCode runner
 
@@ -48,6 +44,20 @@ Concretely:
 - `GitHubAdapter.fetch_candidate_issues()` does NOT pass any assignee filter to the GitHub REST API.
 - Checklist item **M6** is closed as "dropped" (not "done").
 - A follow-up issue can re-introduce it later, by adding the field to the schema and a corresponding filter to the adapter. The QandA G-Q2 entry remains the historical record.
+
+### G-Q3 — Python distribution name (PyPI conflict with existing `symphony`)
+
+Raised by: plan review 2026-06-02 (checklist M12).
+Context: the bare distribution name `symphony` is already installed locally (`symphony 0.1.0` at `/home/will/.local/lib/python3.12/site-packages`).
+
+**Resolution (2026-06-02):** `symphony-py`. The CLI command is `symphony` (an `entry_points` console script named `symphony = symphony.cli:main`); the PyPI distribution is `symphony-py`. The importable Python package is `symphony` (we still own that name inside the venv; the conflict is only at the wheel/distribution level). This mirrors the `elixir/` directory naming and keeps imports clean.
+
+Concretely:
+- `python/pyproject.toml` has `[project] name = "symphony-py"`.
+- `python/src/symphony/` is the importable package.
+- `python/Makefile` builds a `dist/symphony_py-*.whl`.
+- Checklist item **M12** is closed.
+- The local pre-existing `symphony 0.1.0` install is left alone; users pip-installing `symphony-py` into a fresh venv will get only our code.
 
 ### G-Q1 — Run-attempt state machine + claim states: first-class enums or string/dict keys?
 
