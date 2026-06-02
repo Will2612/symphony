@@ -15,22 +15,28 @@ Recommendation in plan-review gap analysis: drop for v1 (not spec-mandated; adds
 
 ### G-Q4
 
-### G-Q4 — Default `codex.command` for the OpenCode runner
-Raised by: plan review 2026-06-02 (checklist M13). _Not yet resolved._
+### G-Q5
 
 ### G-Q5 — Default `codex.approval_policy` / `codex.thread_sandbox` / `codex.turn_sandbox_policy` for the OpenCode runner
-
-Raised by: plan review 2026-06-02 (checklist M13).
-Context: SPEC §5.3.6 says these are "implementation-defined" defaults. The Elixir reference uses a strict `reject` policy + `workspace-write` sandbox + workspace-rooted turn-sandbox-policy. For OpenCode, the equivalent depends on what the ACP protocol actually supports.
-Options:
-- mirror the Elixir strict defaults (translates to ACP equivalents; may not map 1:1)
-- start permissive (`auto-approve`, full disk) and require user to opt in to stricter
-- ask OpenCode for a recommendation
-Recommendation in gap analysis: start with the same high-trust posture described in SPEC §10.5 ("Auto-approve command execution approvals for the session. Auto-approve file-change approvals for the session. Treat user-input-required turns as hard failure."), but document each default explicitly.
+Raised by: plan review 2026-06-02 (checklist M13). _Not yet resolved._
 
 ---
 
 ## Resolved
+
+### G-Q4 — Default `codex.command` for the OpenCode runner
+
+Raised by: plan review 2026-06-02 (checklist M13).
+Context: SPEC §5.3.6 says default is `codex app-server`. For the OpenCode runner, the equivalent is either `opencode acp` (long-lived stdio session, supports continuation on the same thread) or `opencode run --format json` (one-shot, no continuation). The trade-off is fidelity to SPEC §10.2 ("continuation turns on the same live thread") vs. time-to-ship.
+
+**Resolution (2026-06-02):** `opencode acp` (the Agent Client Protocol server over stdio). The default `codex.command` becomes `opencode acp` and the runner speaks JSON-RPC newline-delimited over the subprocess's stdin/stdout. This is the only option that matches SPEC §10.2 exactly: continuation turns happen on the same `live_session.thread_id` and the same subprocess.
+
+Concretely:
+- `OpenCodeRunner` launches `bash -lc "opencode acp"` with cwd = workspace and PATH inherited.
+- 10 MB line buffer per §10.1.
+- `runner/base.py` defines an `ACPMessage` parser; `runner/opencode.py` translates ACP events into the SPEC §10.4 event vocabulary.
+- Tests inject a fake stdio server (an `asyncio` task that reads lines from one end of an in-memory pipe and writes scripted responses) so the test does not need a real `opencode` binary.
+- Checklist item **M13** is closed for the `codex.command` part (the policies are settled in G-Q5).
 
 ### G-Q2 — `tracker.assignee` filter: in scope for v1 or follow-up?
 
