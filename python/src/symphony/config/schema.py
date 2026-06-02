@@ -80,12 +80,20 @@ class Agent(BaseModel):
 
     max_turns: int = 50
     max_retry_backoff_ms: int = 600_000
+    max_concurrent_agents: int = 5
 
     @field_validator("max_retry_backoff_ms")
     @classmethod
     def _non_negative(cls, v: int) -> int:
         if v < 0:
             raise ValueError("agent.max_retry_backoff_ms must be >= 0")
+        return v
+
+    @field_validator("max_concurrent_agents")
+    @classmethod
+    def _positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("agent.max_concurrent_agents must be > 0")
         return v
 
 
