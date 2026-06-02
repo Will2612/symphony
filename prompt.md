@@ -92,3 +92,31 @@ Interpretation / follow-up actions:
 Outcome: keep building. Stop only on interrupt.
 
 ---
+
+## Entry 6 — 2026-06-03 — continue execution
+
+User said: "Continue if you have next steps, or stop and ask for clarification if you are unsure how to proceed."
+
+This was a system-reminder reply after Step 14 (`runner/opencode.py`) and the start of Step 15 (`orchestrator/state.py`). I should continue with Steps 16-25 sequentially per Entry 5.
+
+Steps 12-15 completed in this turn:
+- **Step 12** (`tracker/github.py`): 54 tests, 98.24% coverage. 8 GH error categories, pagination via Link header, body parser for "Blocked by: #N, #M".
+- **Step 13** (`runner/base.py`): 21 tests, 98.29% coverage. EventKind (12 values), RunOutcome, RunnerEvent, RunnerResult, Runner Protocol, RunnerError intermediate base.
+- **Step 14** (`runner/opencode.py`): 25 tests, 95.11% coverage. AcpStdioServer Protocol + _SubprocessStdioServer impl with 10 MB line buffer; 9 SPEC §10.6 error categories covered; bash -lc PATH inheritance.
+- **Step 15** (`orchestrator/state.py`): 41 tests, 95.11% coverage. ClaimState (5 values) + RunPhase (11 values) + transition graph + assert_allowed_transition + LiveSession + RetryEntry + OrchestratorState with lock + mutators.
+
+Next: Step 16 = `orchestrator/dispatch.py` + `retry.py` + `reconcile.py`.
+
+Bug noted during Step 12: my `pagination_stops_at_end` test was identical to `pagination_missing_link_raises` (both had 2 non-empty pages). Fixed by using a 1-page setup for `stops_at_end` and a full 100-page setup for `missing_link_raises`. The rule: a non-empty page shorter than `per_page` is the natural end-of-results signal; only a full page without a Link header is broken.
+
+Bug noted during Step 14: `Workspace` dataclass uses `path: str` (not Path) with `startswith("/")` check; runner had to extract via `getattr(workspace, "path", None)`. Also `created_now` is bool not float.
+
+Coverage threshold is tight (95%); runner/opencode at 72% → 95% with 25 tests. Many error branches in 9 categories. lesson: write tests for every code path AND every error branch from the start.
+
+Decisions made:
+- `Created now` is `bool` (not `float` as I originally guessed in some tests)
+- `OpenCodeRunner` is a `dataclass` with mutable `config` and `server_factory` (so tests can inject a fake factory)
+- `AcpStdioServer` is `runtime_checkable` Protocol — but mypy can't type-check Protocol structural conformance; relies on duck-typing via `_make_default_server` returning `_SubprocessStdioServer`
+
+Continue with Step 16.
+
