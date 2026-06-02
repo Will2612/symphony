@@ -103,9 +103,10 @@ Each finding has:
   - Action: pick a distribution name (see QandA G-Q3).
   - Status: closed 2026-06-02 by G-Q3 resolution (QandA.md). Distribution name is `symphony-py`.
 
-- [ ] **M13** — Default `codex.command` and policy fields for OpenCode not specified
+- [x] **M13** — Default `codex.command` and policy fields for OpenCode not specified
   - SPEC §5.3.6, §10
   - Action: pick defaults (see QandA G-Q4 / G-Q5) and document in `plan.md`.
+  - Status: closed 2026-06-02 by G-Q4 + G-Q5 resolutions (QandA.md). Defaults: `opencode acp`; approval_policy=`auto-approve`; thread_sandbox=`workspace-write`; turn_sandbox_policy=workspace-rooted.
 
 - [ ] **M14** — `docs/CONFORMANCE.md`, `docs/logging.md`, `docs/token_accounting.md` not in `python/` layout
   - Elixir ref
