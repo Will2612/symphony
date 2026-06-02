@@ -147,9 +147,9 @@ Plan patch that closed most of this list: `8902830` ("plan: v2 — fold in G-Q1.
 - [x] **m4** — 10 MB line buffer test not in any test file yet.
   - Status: closed 2026-06-02 by `8902830`. Plan §4.1 references `test_runner_opencode.py::test_line_buffer_limit`; conformance map row 17.5 names the test.
 
-- [ ] **m5** — Layout uses `src/symphony/` (src layout). Plan doesn't justify the choice.
-  - Action: add a one-sentence rationale in plan §1 explaining why src layout over flat (`import symphony` works the same in editable install, but the wheel is cleaner; pytest discovery also benefits; matches modern best practice).
-  - Status: still open. Will be folded into the next plan edit (single-line addition).
+- [x] **m5** — Layout uses `src/symphony/` (src layout). Plan doesn't justify the choice.
+  - Action: add a one-sentence rationale in plan §1 explaining why src layout over flat.
+  - Status: closed 2026-06-02 by `593dea1`. Plan §1 now has a "Why src/symphony/ (src layout)" callout.
 
 - [x] **m6** — `tracker.endpoint` for GH Enterprise mentioned but no test; add a unit test that accepts a custom endpoint.
   - Status: closed 2026-06-02 by `8902830`. Plan §3 (last bullet under GitHub) and conformance map row 17.3 reference a custom-endpoint unit test.
@@ -160,6 +160,6 @@ Plan patch that closed most of this list: `8902830` ("plan: v2 — fold in G-Q1.
 
 - 10 / 10 critical items closed.
 - 14 / 14 medium items closed.
-- 5 / 6 minor items closed; 1 minor (m5) still open — a one-line rationale to add.
+- 6 / 6 minor items closed.
 - All 5 open questions (G-Q1 through G-Q5) resolved; resolutions in `QandA.md`.
-- Plan is at v2 (commit `8902830`); next plan edit closes m5.
+- Plan is at v2 (commit `8902830`) with one follow-up `593dea1` (m5). No remaining gaps. Ready to begin TDD Step 1.
