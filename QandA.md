@@ -6,14 +6,8 @@ Living document of design questions raised during plan review and implementation
 
 ## Open
 
-### G-Q1 — Run-attempt state machine + claim states: first-class enums or string/dict keys?
-
-Raised by: plan review 2026-06-02.
-Context: SPEC §7.1 (Issue Orchestration States: Unclaimed / Claimed / Running / RetryQueued / Released) and §7.2 (Run-Attempt Lifecycle: PreparingWorkspace → BuildingPrompt → LaunchingAgentProcess → InitializingSession → StreamingTurn → Finishing → Succeeded / Failed / TimedOut / Stalled / CanceledByReconciliation).
-Question: should the plan surface these as first-class `ClaimState` / `RunPhase` enums on the `LiveSession` dataclass, or keep them as strings / dict keys like the Elixir reference does?
-Recommendation in plan-review gap analysis: first-class enums (cheaper with Python type hints; safer).
-
 ### G-Q2 — `tracker.assignee` filter: in scope for v1 or follow-up?
+Raised by: plan review 2026-06-02. _Not yet resolved._
 
 Raised by: plan review 2026-06-02.
 Context: The Elixir reference supports `tracker.assignee: "me"` (resolves to viewer) and `tracker.assignee: "<id>"` (route to a specific user). The SPEC itself does not mandate this. For the GitHub adapter, the equivalent is `tracker.assignee: "username"` filtering on the GH assignee field.
@@ -47,4 +41,18 @@ Recommendation in gap analysis: start with the same high-trust posture described
 
 ## Resolved
 
-_(none yet — first questions to resolve are G-Q1 through G-Q5)_
+### G-Q1 — Run-attempt state machine + claim states: first-class enums or string/dict keys?
+
+Raised by: plan review 2026-06-02.
+Context: SPEC §7.1 (Issue Orchestration States: Unclaimed / Claimed / Running / RetryQueued / Released) and §7.2 (Run-Attempt Lifecycle: PreparingWorkspace → BuildingPrompt → LaunchingAgentProcess → InitializingSession → StreamingTurn → Finishing → Succeeded / Failed / TimedOut / Stalled / CanceledByReconciliation).
+
+**Resolution (2026-06-02):** First-class Python enums. Add `ClaimState` and `RunPhase` `enum.Enum` subclasses to `src/symphony/orchestrator/state.py` and surface them as typed fields on `LiveSession` (e.g. `claim_state: ClaimState`, `current_phase: RunPhase`). Use `match/case` over enums for state transitions, which gives compile-time exhaustiveness under `mypy --strict`.
+
+Concretely this means:
+- `ClaimState` has values: `UNCLAIMED`, `CLAIMED`, `RUNNING`, `RETRY_QUEUED`, `RELEASED`.
+- `RunPhase` has values: `PREPARING_WORKSPACE`, `BUILDING_PROMPT`, `LAUNCHING_AGENT_PROCESS`, `INITIALIZING_SESSION`, `STREAMING_TURN`, `FINISHING`, `SUCCEEDED`, `FAILED`, `TIMED_OUT`, `STALLED`, `CANCELED_BY_RECONCILIATION`.
+- The state-transition graph from §7.1 and §7.2 is implemented as `ALLOWED_TRANSITIONS: dict[Enum, frozenset[Enum]]` so the orchestrator can assert every transition is valid before applying it.
+- Snapshot API (§13.7) serializes enums as their `value` string.
+- Checklist items **C2** and **C3** are closed by this resolution.
+
+Why not strings: it loses compile-time exhaustiveness and lets typos slip in. Why not dict-keyed: the enum-based transition graph above gives the same flexibility with better typing.
