@@ -6,8 +6,11 @@ This directory contains the Elixir agent orchestration service that polls Linear
 
 - Elixir: `1.19.x` (OTP 28) via `mise`.
 - Install deps: `mix setup`.
-- Main quality gate: `make all` (format check, lint, coverage, dialyzer).
-
+- `make all` = `ci` = `setup → build → fmt-check → lint (specs.check + credo --strict) → coverage → dialyzer`.
+- Escript builds to `bin/symphony` via `mix escript.build`.
+- Formatter line length is **200** (`.formatter.exs`).
+- No database — all orchestrator state is in-memory. Restart loses blocked-issue map.
+- Template rendering uses **Solid** (Liquid-compatible, strict variable checking).
 
 ## Codebase-Specific Conventions
 
@@ -31,6 +34,15 @@ Run targeted tests while iterating, then run full gates before handoff.
 ```bash
 make all
 ```
+
+Coverage target is **100%** but many integration-level modules are ignored in `mix.exs` (Config, Orchestrator, AgentRunner, Codex.AppServer, HttpServer, all Web modules, and others). Unit test coverage applies to the remaining modules.
+
+E2E test (`test/symphony_elixir/live_e2e_test.exs`) creates real Linear resources and launches a real `codex app-server` session:
+```bash
+export LINEAR_API_KEY=...
+make e2e
+```
+Optional: `SYMPHONY_LIVE_LINEAR_TEAM_KEY` (default `SYME2E`), `SYMPHONY_LIVE_SSH_WORKER_HOSTS`.
 
 ## Required Rules
 
