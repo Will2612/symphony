@@ -134,6 +134,66 @@ class TurnInputRequired(SymphonyError):
     code = "turn_input_required"
 
 
+class HookError(SymphonyError):
+    """Base class for workspace-hook failures."""
+
+
+class HookFailed(HookError):
+    """A hook command exited with a non-zero status."""
+
+    code = "hook_failed"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        hook_name: str,
+        status: int,
+        output: str,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(message, code=code)
+        self.hook_name = hook_name
+        self.status = status
+        self.output = output
+
+
+class HookTimeout(HookError):
+    """A hook command did not complete within the configured timeout."""
+
+    code = "hook_timeout"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        hook_name: str,
+        timeout_ms: int,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(message, code=code)
+        self.hook_name = hook_name
+        self.timeout_ms = timeout_ms
+
+
+class WorkspaceOutsideRoot(SymphonyError):
+    """A computed workspace path is outside the configured workspace root."""
+
+    code = "workspace_outside_root"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        workspace: str,
+        root: str,
+        code: str | None = None,
+    ) -> None:
+        super().__init__(message, code=code)
+        self.workspace = workspace
+        self.root = root
+
+
 __all__ = [
     "CodexNotFound",
     "ConfigError",
@@ -146,6 +206,9 @@ __all__ = [
     "GitHubRateLimited",
     "GitHubUnauthorized",
     "GitHubUnknownPayload",
+    "HookError",
+    "HookFailed",
+    "HookTimeout",
     "InvalidWorkspaceCwd",
     "PortExit",
     "ResponseError",
@@ -161,4 +224,5 @@ __all__ = [
     "WorkflowFrontMatterNotAMap",
     "WorkflowMissingFile",
     "WorkflowParseError",
+    "WorkspaceOutsideRoot",
 ]
