@@ -74,9 +74,10 @@ Each finding has:
   - SPEC §13.7
   - Action: add to `plan.md` §10 and to `cli.py`; test in `test_cli.py`.
 
-- [ ] **M6** — `tracker.assignee` optional routing filter not in plan
+- [x] **M6** — `tracker.assignee` optional routing filter not in plan
   - Elixir ref (not in SPEC)
   - Action: decide (see QandA G-Q2) and add or drop accordingly.
+  - Status: closed 2026-06-02 by G-Q2 resolution (QandA.md). Dropped for v1.
 
 - [ ] **M7** — `worker.ssh_hosts` / `worker.max_concurrent_agents_per_host` schema fields not in plan
   - SPEC §5 + Appendix A
