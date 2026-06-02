@@ -19,7 +19,6 @@ Interpretation / follow-up actions:
 - Design a tracker Protocol that is replaceable, with `GitHubTracker` as the first real adapter.
 - Design a runner Protocol that is replaceable, with `OpenCodeRunner` as the first real adapter (over `opencode acp`).
 - Use BDD (pytest-bdd) + TDD (pytest unit) methodologies; one test per behavior in SPEC §17.
-- Enumerate permissions/capabilities needed before any mutation.
 
 Outcome: produced `plan.md` v1 with full architecture, conformance map, and work plan. Implementation pending.
 
