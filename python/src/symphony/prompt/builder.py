@@ -23,6 +23,7 @@ Public API:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import fields, is_dataclass
 from typing import Any
 
 import jinja2
@@ -107,7 +108,7 @@ def parse_template(source: str) -> jinja2.Template:
 def render_template(
     template: str | jinja2.Template,
     *,
-    issue: Mapping[str, Any],
+    issue: Any,  # noqa: ANN401
     attempt: int | None,
 ) -> str:
     """Render `template` with `issue` and `attempt` in scope.
@@ -124,8 +125,18 @@ def render_template(
             is missing, or the runtime encounters any other render error.
     """
     compiled = parse_template(template) if isinstance(template, str) else template
+    # Accept any Mapping-like, dataclass instance, or object with
+    # `__dict__`; render via `dict(issue)` (works for Mappings and
+    # objects whose `__iter__` yields key-value pairs) and fall
+    # back to a dataclass-aware field extraction.
+    if isinstance(issue, Mapping):
+        issue_dict: dict[str, Any] = dict(issue)
+    elif is_dataclass(issue):
+        issue_dict = {f.name: getattr(issue, f.name) for f in fields(issue)}
+    else:
+        issue_dict = dict(vars(issue))
     try:
-        return compiled.render(issue=dict(issue), attempt=attempt)
+        return compiled.render(issue=issue_dict, attempt=attempt)
     except jinja2.UndefinedError as e:
         raise TemplateRenderError(
             f"template render error: {e.message}",
