@@ -57,7 +57,7 @@ Outcome: created `checklist.md` and `QandA.md`; first commits of each. Future pl
 
 ---
 
-## Entry 4 — Pre-flight permission grant before each build
+## Entry 4 — Pre-flight permission grant before each build **(ignore — superseded by Entry 5)**
 
 **[Will]**
 before each build operation, ask me for full read and write access to this repo with question tool to avoid execution interupt per permission requirement.
@@ -71,5 +71,24 @@ Interpretation / follow-up actions:
 - This is in addition to (not a replacement for) the Entry 2 commit-per-file rule and the Entry 3 plan-review workflow.
 
 Outcome: applied to all future build steps starting with TDD Step 1. The first such request will be via the `question` tool.
+
+---
+
+## Entry 5 — Auto-proceed through plan §11 steps
+
+**[Will]**
+mark prompt entry 4 with (ignore), then proceed following steps unless any interupt.
+
+Interpretation / follow-up actions:
+- Entry 4 is now superseded and should be marked `(ignore)` in the heading; its content remains for the historical record but is no longer authoritative.
+- Continue executing plan §11 (steps 3-25) sequentially without pausing to ask for permission per step.
+- The execution policy is "proceed unless interrupted":
+  - "Proceed" = follow the plan, TDD per step, end each step with `make all` green, commit per the Entry 2 rule.
+  - "Interrupt" = Will says stop, an unexpected build failure that needs a design decision, an ambiguity in the spec, a plan gap that surfaces mid-implementation, or any out-of-scope request.
+- New `[Will]` prompts and plan-review findings still go through the Entry 3 workflow (checklist.md / QandA.md + commits).
+- Per-file commits still apply (Entry 2). Multi-file changes within a single step get separate commits where it makes sense, but a tight cluster of related changes (e.g. errors.py + its test) is one commit.
+- Coverage gate (95%) and `make all` green gate still apply at the end of every step. A step is "done" only when both pass.
+
+Outcome: keep building. Stop only on interrupt.
 
 ---
