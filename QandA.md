@@ -6,8 +6,7 @@ Living document of design questions raised during plan review and implementation
 
 ## Open
 
-### G-Q2 — `tracker.assignee` filter: in scope for v1 or follow-up?
-Raised by: plan review 2026-06-02. _Not yet resolved._
+### G-Q3
 
 Raised by: plan review 2026-06-02.
 Context: The Elixir reference supports `tracker.assignee: "me"` (resolves to viewer) and `tracker.assignee: "<id>"` (route to a specific user). The SPEC itself does not mandate this. For the GitHub adapter, the equivalent is `tracker.assignee: "username"` filtering on the GH assignee field.
@@ -15,11 +14,7 @@ Question: ship v1 with assignee-based routing, or drop it (and add later if need
 Recommendation in plan-review gap analysis: drop for v1 (not spec-mandated; adds a `viewer` query and a config key). Resolution will determine whether checklist item M6 closes as "done" or "dropped".
 
 ### G-Q3 — Python distribution name (PyPI conflict with existing `symphony`)
-
-Raised by: plan review 2026-06-02 (checklist M12).
-Context: the bare distribution name `symphony` is already installed locally (`symphony 0.1.0` at `/home/will/.local/lib/python3.12/site-packages`).
-Options: `symphony-py`, `symphony-orchestrator`, `symphony-openai`, or keep `symphony` and uninstall the existing one (risky — it could be in active use).
-Recommendation: `symphony-py` (matches the `elixir/` directory naming and is unambiguous).
+Raised by: plan review 2026-06-02 (checklist M12). _Not yet resolved._
 
 ### G-Q4 — Default `codex.command` for the OpenCode runner
 
@@ -40,6 +35,19 @@ Recommendation in gap analysis: start with the same high-trust posture described
 ---
 
 ## Resolved
+
+### G-Q2 — `tracker.assignee` filter: in scope for v1 or follow-up?
+
+Raised by: plan review 2026-06-02.
+Context: the Elixir reference supports `tracker.assignee: "me"` (resolves to viewer) and `tracker.assignee: "<id>"` (route to a specific user). The SPEC itself does not mandate this. For the GitHub adapter, the equivalent is `tracker.assignee: "username"` filtering on the GH assignee field.
+
+**Resolution (2026-06-02):** Drop for v1. The SPEC does not require it, and shipping it would force an extra `viewer` resolver on the Linear side and an extra config key on the GitHub side. GitHub adapter will only filter by `state` and `labels` (the spec-mandated filters).
+
+Concretely:
+- The Pydantic config schema for `Tracker` does NOT include an `assignee` field in v1.
+- `GitHubAdapter.fetch_candidate_issues()` does NOT pass any assignee filter to the GitHub REST API.
+- Checklist item **M6** is closed as "dropped" (not "done").
+- A follow-up issue can re-introduce it later, by adding the field to the schema and a corresponding filter to the adapter. The QandA G-Q2 entry remains the historical record.
 
 ### G-Q1 — Run-attempt state machine + claim states: first-class enums or string/dict keys?
 
