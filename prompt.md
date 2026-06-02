@@ -39,3 +39,20 @@ Interpretation / follow-up actions:
 Outcome: created `plan.md` and `prompt.md`; this is the first commit of the pair.
 
 ---
+
+## Entry 3 — Plan review, checklist, and Q&A workflow
+
+**[Will]**
+we will check the plan constantly like this, once there is any findings on the plan, make a checklist.md and make a commit for it. and if there is anything we need to clearify, make a question list and we will check them one by one, once it's done, record it in a QandA.md and make a commit for it.
+
+Interpretation / follow-up actions:
+- Establish a recurring plan-review workflow. After every plan change, look for:
+  1. **Findings / gaps** → write to `checklist.md` as an actionable checklist (with checkboxes), grouped by priority, each with a SPEC reference and a concrete next action. Commit it.
+  2. **Open questions** → propose resolution one at a time. When a question is resolved, record the question + answer in `QandA.md` (living document). Commit it.
+- This directive supersedes Entry 2's general "commit plan changes" rule for plan gaps specifically — gaps go to `checklist.md`, not back into `plan.md` until they're addressed.
+- `checklist.md` and `QandA.md` are siblings of `plan.md`/`prompt.md` and get the same per-file commit treatment.
+- The current plan review (after the v1 plan was committed) produced 10 critical findings (C1–C10), 14 medium findings (M1–M14), and 3 open questions (G-Q1, G-Q2, M12-from-prior-list) — see `checklist.md` and `QandA.md`.
+
+Outcome: created `checklist.md` and `QandA.md`; first commits of each. Future plan reviews add to these files and commit.
+
+---
