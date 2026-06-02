@@ -99,8 +99,9 @@ Each finding has:
   - SPEC §17.7
   - Action: add a `shutdown()` test in `test_cli.py` that asserts exit code 0 on clean shutdown, nonzero on `Supervisor.terminate` failure.
 
-- [ ] **M12** — PyPI package name conflict (`symphony` is taken)
+- [x] **M12** — PyPI package name conflict (`symphony` is taken)
   - Action: pick a distribution name (see QandA G-Q3).
+  - Status: closed 2026-06-02 by G-Q3 resolution (QandA.md). Distribution name is `symphony-py`.
 
 - [ ] **M13** — Default `codex.command` and policy fields for OpenCode not specified
   - SPEC §5.3.6, §10
