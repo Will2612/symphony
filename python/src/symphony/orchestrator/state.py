@@ -164,6 +164,7 @@ class LiveSession:
     phase: RunPhase = RunPhase.PREPARING_WORKSPACE
     attempt: int = 1
     last_codex_timestamp: datetime | None = None
+    turn_count: int = 0
     usage: dict[str, int] = field(default_factory=dict)
 
     def advance_phase(self, target: RunPhase) -> None:
@@ -211,6 +212,8 @@ class OrchestratorState:
     claimed: set[str] = field(default_factory=set)
     retry_attempts: dict[str, RetryEntry] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    runtime_seconds: int = 0
+    latest_rate_limit: dict[str, object] | None = None
 
     # --- read-only inspection (no lock required) -----------------------
 

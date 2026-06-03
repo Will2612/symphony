@@ -114,6 +114,7 @@ class Server(BaseModel):
 
     host: str = "127.0.0.1"
     port: int = 7842
+    log_file: str = ""
 
     @field_validator("port")
     @classmethod
