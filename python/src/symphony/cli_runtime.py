@@ -197,8 +197,22 @@ def build_runtime(
 ) -> RuntimeHandle:
     """Load WORKFLOW.md, build the orchestrator + observability
     server, and start them in the background. Returns a
-    `RuntimeHandle`."""
+    `RuntimeHandle`.
+
+    Implementation note: this entire function runs inside a
+    single `asyncio.run()` so the event loop is created,
+    used, and torn down atomically. The `asyncio.get_event_loop()`
+    calls below would otherwise raise `RuntimeError: There is no
+    current event loop in thread 'MainThread'` on Python 3.12+."""
     _ = deps  # accepted for interface uniformity
+    return asyncio.run(_build_runtime_async(workflow_path, logs_root, port))
+
+
+async def _build_runtime_async(
+    workflow_path: str,
+    logs_root: str | None,
+    port: int | None,
+) -> RuntimeHandle:
     workflow = load(workflow_path)
     config = _config_from_workflow(workflow, logs_root=logs_root, port=port)
     configure(config)
@@ -213,7 +227,7 @@ def build_runtime(
         workspace_manager=workspace_manager,
     )
 
-    server = asyncio.run(obs_start(config, service))
+    server = await obs_start(config, service)
 
     loop = asyncio.get_event_loop()
     service_task = loop.create_task(service.run_forever(), name="symphony-orchestrator")

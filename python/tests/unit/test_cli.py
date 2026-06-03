@@ -35,6 +35,7 @@ from symphony.cli_runtime import (
     _task_exception,
     _wait_for_completion,
     build_default_deps,
+    build_runtime,
 )
 from symphony.config.schema import SymphonyConfig, Tracker
 from symphony.errors import WorkflowParseError
@@ -842,6 +843,59 @@ def test_real_build_runtime_delegates_to_build_runtime(monkeypatch: Any) -> None
     handle = _real_build_runtime("/path/WORKFLOW.md", logs_root=None, port=0)
     assert handle is sentinel
     mock.assert_called_once_with("/path/WORKFLOW.md", logs_root=None, port=0)
+
+
+def test_build_runtime_works_from_sync_main(tmp_path: Any, monkeypatch: Any) -> None:
+    """Regression: `build_runtime` must succeed when called from a
+    fresh `python -m symphony` invocation (no pre-existing event
+    loop in the main thread).
+
+    Pre-fix behavior: `asyncio.run(obs_start(...))` then
+    `asyncio.get_event_loop()` raised `RuntimeError: There is no
+    current event loop in thread 'MainThread'` on Python 3.12+.
+
+    The test monkeypatches the heavyweight components so it only
+    exercises the event-loop / loop-creation plumbing."""
+    from pathlib import Path  # noqa: PLC0415
+
+    monkeypatch.setattr("symphony.cli_runtime.obs_start", _async_return_fake_server)
+    monkeypatch.setattr("symphony.cli_runtime.WorkspaceManager", lambda config: MagicMock())
+    monkeypatch.setattr("symphony.cli_runtime._build_tracker", lambda w, c: MagicMock())
+    monkeypatch.setattr("symphony.cli_runtime.OpenCodeRunner", lambda config: MagicMock())
+    monkeypatch.setattr("symphony.cli_runtime.OrchestratorService", lambda **kw: _FakeService())
+
+    repo_root = Path(__file__).resolve().parents[2]
+    example = repo_root / "examples" / "WORKFLOW.memory-dev.md"
+    if not example.is_file():
+        pytest.skip(f"example workflow not found: {example}")
+
+    handle = build_runtime(str(example), logs_root=str(tmp_path), port=0)
+    assert handle is not None
+    assert handle.service_task is not None
+    assert handle.server_task is not None
+    if handle.service_task is not None and not handle.service_task.done():
+        handle.service_task.cancel()
+    if handle.server_task is not None and not handle.server_task.done():
+        handle.server_task.cancel()
+
+
+class _FakeUvicornServer:
+    async def serve(self) -> None:
+        return None
+
+
+class _FakeService:
+    async def run_forever(self) -> None:
+        return None
+
+
+class _FakeServer:
+    def __init__(self) -> None:
+        self.server = _FakeUvicornServer()
+
+
+async def _async_return_fake_server(*_a: Any, **_kw: Any) -> Any:
+    return _FakeServer()
 
 
 def test_real_ensure_orchestrator_started_returns_true_for_real_workflow(
