@@ -78,6 +78,7 @@ filterwarnings = [
     "ignore::DeprecationWarning:pydantic.*",
     "ignore::DeprecationWarning:websockets.*",
     "ignore::DeprecationWarning:uvicorn.*",
+    "ignore::pytest.PytestUnknownMarkWarning",
 ]
 pythonpath = ["src", "tests"]
 
