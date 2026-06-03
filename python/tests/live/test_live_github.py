@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import httpx
@@ -96,15 +97,23 @@ def test_create_and_close_issue_round_trip() -> None:
         assert created["number"] > 0
         assert created["state"] == "open"
 
-        r = httpx.get(
-            f"https://api.github.com/repos/{repo}/issues",
-            headers=headers,
-            params={"state": "open", "labels": "symphony-e2e"},
-            timeout=10.0,
+        numbers: list[int] = []
+        for _attempt in range(10):
+            r = httpx.get(
+                f"https://api.github.com/repos/{repo}/issues",
+                headers=headers,
+                params={"state": "open", "labels": "symphony-e2e"},
+                timeout=10.0,
+            )
+            assert r.status_code == 200
+            numbers = [i["number"] for i in r.json()]
+            if created["number"] in numbers:
+                break
+            time.sleep(1.0)
+        assert created["number"] in numbers, (
+            f"newly created issue #{created['number']} not yet visible "
+            f"via the open-issues endpoint after 10s"
         )
-        assert r.status_code == 200
-        numbers = [i["number"] for i in r.json()]
-        assert created["number"] in numbers
     finally:
         if created is not None:
             r = httpx.patch(
