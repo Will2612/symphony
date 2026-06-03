@@ -110,13 +110,14 @@ class OrchestratorService:
         runner: Runner,
         workspace_manager: WorkspaceManager,
         observer: Observer | None = None,
+        state: OrchestratorState | None = None,
     ) -> None:
         self.config = config
         self.tracker = tracker
         self.runner = runner
         self.workspace_manager = workspace_manager
         self.observer = observer
-        self.state = OrchestratorState()
+        self.state = state if state is not None else OrchestratorState()
         self._stop = asyncio.Event()
         self._worker_tasks: dict[str, asyncio.Task[None]] = {}
 

@@ -76,6 +76,8 @@ filterwarnings = [
     "error",
     "ignore::DeprecationWarning:httpx.*",
     "ignore::DeprecationWarning:pydantic.*",
+    "ignore::DeprecationWarning:websockets.*",
+    "ignore::DeprecationWarning:uvicorn.*",
 ]
 pythonpath = ["src", "tests"]
 
