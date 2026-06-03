@@ -44,3 +44,7 @@ make format && make lint && make type && make test
 ## Permissions
 
 The orchestrator runs with reduced guardrails by design. The CLI requires `--i-understand-that-this-will-be-running-without-the-usual-guardrails` before starting. This is mirrored from the Elixir reference.
+
+## Prompt log
+
+The assistant reads `../prompt.md` at the start of every task. The file is a running log of user prompts that begin with the literal marker `[Guideline]`. Prompts without that prefix are **not** recorded. The rule is enforced at write time: check `prompt.startswith("[Guideline]")` before appending. Historical entries that predate this rule keep their original prompt text verbatim, but the in-line marker label is `[Guideline]` for consistency.
