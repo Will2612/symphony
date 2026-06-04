@@ -23,6 +23,7 @@ from symphony.cli_runtime import (
     RuntimeHandle,
     _await_completion,
     _build_tracker,
+    _check_tasks_for_errors,
     _config_from_workflow,
     _default_log_file,
     _default_wait_for_shutdown,
@@ -32,6 +33,7 @@ from symphony.cli_runtime import (
     _real_expand_user,
     _real_expand_vars,
     _real_file_regular,
+    _start_background_tasks,
     _task_exception,
     _wait_for_completion,
     build_default_deps,
@@ -855,7 +857,10 @@ def test_build_runtime_works_from_sync_main(tmp_path: Any, monkeypatch: Any) -> 
     current event loop in thread 'MainThread'` on Python 3.12+.
 
     The test monkeypatches the heavyweight components so it only
-    exercises the event-loop / loop-creation plumbing."""
+    exercises the event-loop / loop-creation plumbing.
+
+    Since the two-loop fix, build_runtime is sync and returns a
+    handle without tasks; tasks are started in _wait_for_completion."""
     from pathlib import Path  # noqa: PLC0415
 
     monkeypatch.setattr("symphony.cli_runtime.obs_start", _async_return_fake_server)
@@ -871,12 +876,9 @@ def test_build_runtime_works_from_sync_main(tmp_path: Any, monkeypatch: Any) -> 
 
     handle = build_runtime(str(example), logs_root=str(tmp_path), port=0)
     assert handle is not None
-    assert handle.service_task is not None
-    assert handle.server_task is not None
-    if handle.service_task is not None and not handle.service_task.done():
-        handle.service_task.cancel()
-    if handle.server_task is not None and not handle.server_task.done():
-        handle.server_task.cancel()
+    assert handle.service is not None
+    assert handle.service_task is None
+    assert handle.server_task is None
 
 
 class _FakeUvicornServer:
@@ -1223,3 +1225,113 @@ def test_build_tracker_raises_for_unknown_kind() -> None:
     config = SymphonyConfig(tracker=tracker)
     with pytest.raises(ValueError, match=r"Unknown tracker\.kind"):
         _build_tracker(workflow, config)
+
+
+# ---------------------------------------------------------------------------
+# _start_background_tasks / _check_tasks_for_errors
+# ---------------------------------------------------------------------------
+
+
+def test_start_background_tasks_creates_service_task() -> None:
+
+    async def _go() -> None:
+        fake_service = MagicMock()
+        fake_service.run_forever = MagicMock(return_value=asyncio.sleep(0))
+
+        fake_server_handle = MagicMock()
+        fake_server_handle.server.serve = MagicMock(return_value=asyncio.sleep(0))
+
+        handle = RuntimeHandle(
+            workflow_path="WORKFLOW.md",
+            config=SymphonyConfig(),
+            service=fake_service,
+            server=fake_server_handle,
+            server_task=None,
+            service_task=None,
+            stop_event=asyncio.Event(),
+        )
+        await _start_background_tasks(handle)
+        assert handle.service_task is not None
+        assert handle.server_task is not None
+        handle.service_task.cancel()
+        handle.server_task.cancel()
+
+    asyncio.run(_go())
+
+
+def test_start_background_tasks_skips_when_tasks_exist() -> None:
+
+    async def _go() -> None:
+        existing = asyncio.create_task(asyncio.sleep(10))
+        handle = RuntimeHandle(
+            workflow_path="WORKFLOW.md",
+            config=SymphonyConfig(),
+            service=MagicMock(),
+            server=MagicMock(),
+            server_task=existing,
+            service_task=existing,
+            stop_event=asyncio.Event(),
+        )
+        await _start_background_tasks(handle)
+        assert handle.service_task is existing
+        assert handle.server_task is existing
+        existing.cancel()
+
+    asyncio.run(_go())
+
+
+def test_start_background_tasks_noop_when_service_is_none() -> None:
+
+    async def _go() -> None:
+        handle = RuntimeHandle(
+            workflow_path="WORKFLOW.md",
+            config=SymphonyConfig(),
+            service=None,
+            server=None,
+            server_task=None,
+            service_task=None,
+            stop_event=asyncio.Event(),
+        )
+        await _start_background_tasks(handle)
+        assert handle.service_task is None
+        assert handle.server_task is None
+        assert handle.server is None
+
+    asyncio.run(_go())
+
+
+def test_check_tasks_for_errors_returns_zero_for_clean_tasks() -> None:
+
+    async def _go() -> None:
+        t1 = asyncio.create_task(asyncio.sleep(0))
+        t2 = asyncio.create_task(asyncio.sleep(0))
+        await asyncio.gather(t1, t2)
+        assert _check_tasks_for_errors({t1, t2}) == 0
+
+    asyncio.run(_go())
+
+
+def test_check_tasks_for_errors_returns_one_for_failed_task() -> None:
+
+    async def _go() -> None:
+        async def _boom() -> None:
+            raise RuntimeError("crashed")
+
+        t_ok = asyncio.create_task(asyncio.sleep(0))
+        t_bad = asyncio.create_task(_boom())
+        await asyncio.gather(t_ok, t_bad, return_exceptions=True)
+        assert _check_tasks_for_errors({t_ok, t_bad}) == 1
+
+    asyncio.run(_go())
+
+
+def test_check_tasks_for_errors_ignores_cancelled() -> None:
+
+    async def _go() -> None:
+        t = asyncio.create_task(asyncio.sleep(10))
+        t.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await t
+        assert _check_tasks_for_errors({t}) == 0
+
+    asyncio.run(_go())

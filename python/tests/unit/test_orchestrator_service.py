@@ -95,7 +95,7 @@ class _FakeWorkspaceManager:
     workspaces: dict[str, Workspace] = field(default_factory=dict)
     create_raises: Exception | None = None
 
-    def create_for_issue(self, identifier: str, *, issue_id: str | None = None) -> Workspace:
+    async def create_for_issue(self, identifier: str, *, issue_id: str | None = None) -> Workspace:
         if self.create_raises is not None:
             raise self.create_raises
         ws = Workspace(path=f"/tmp/ws/{identifier}", key=identifier, created_now=True)

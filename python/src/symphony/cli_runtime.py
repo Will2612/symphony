@@ -195,24 +195,15 @@ def build_runtime(
     port: int | None = None,
     deps: CliDeps | None = None,
 ) -> RuntimeHandle:
-    """Load WORKFLOW.md, build the orchestrator + observability
-    server, and start them in the background. Returns a
-    `RuntimeHandle`.
+    """Load WORKFLOW.md and build the orchestrator objects.
 
-    Implementation note: this entire function runs inside a
-    single `asyncio.run()` so the event loop is created,
-    used, and torn down atomically. The `asyncio.get_event_loop()`
-    calls below would otherwise raise `RuntimeError: There is no
-    current event loop in thread 'MainThread'` on Python 3.12+."""
+    Returns a `RuntimeHandle` with the service and config ready but
+    **without** starting the HTTP server or background tasks. The
+    server and tasks are started inside `_wait_for_completion` so
+    they share the same event loop that awaits them — avoids the
+    two-`asyncio.run()` lifecycle bug where tasks created in the
+    first run get cancelled before the second run starts."""
     _ = deps  # accepted for interface uniformity
-    return asyncio.run(_build_runtime_async(workflow_path, logs_root, port))
-
-
-async def _build_runtime_async(
-    workflow_path: str,
-    logs_root: str | None,
-    port: int | None,
-) -> RuntimeHandle:
     workflow = load(workflow_path)
     config = _config_from_workflow(workflow, logs_root=logs_root, port=port)
     configure(config)
@@ -227,18 +218,13 @@ async def _build_runtime_async(
         workspace_manager=workspace_manager,
     )
 
-    server = await obs_start(config, service)
-
-    loop = asyncio.get_event_loop()
-    service_task = loop.create_task(service.run_forever(), name="symphony-orchestrator")
-    server_task = loop.create_task(server.server.serve(), name="symphony-server")
     return RuntimeHandle(
         workflow_path=workflow_path,
         config=config,
         service=service,
-        server=server,
-        server_task=server_task,
-        service_task=service_task,
+        server=None,
+        server_task=None,
+        service_task=None,
     )
 
 
@@ -318,7 +304,26 @@ def _await_completion(handle: RuntimeHandle) -> int:
         return 0
 
 
+async def _start_background_tasks(handle: RuntimeHandle) -> None:
+    """Start the HTTP server and background tasks on the current event loop.
+
+    Called from _wait_for_completion so that tasks are created and
+    awaited on the same loop — avoids the two-asyncio.run() bug.
+    """
+    if handle.server is None and handle.service is not None:
+        handle.server = await obs_start(handle.config, handle.service)
+    loop = asyncio.get_event_loop()
+    if handle.service_task is None and handle.service is not None:
+        handle.service_task = loop.create_task(
+            handle.service.run_forever(), name="symphony-orchestrator"
+        )
+    if handle.server_task is None and handle.server is not None:
+        handle.server_task = loop.create_task(handle.server.server.serve(), name="symphony-server")
+
+
 async def _wait_for_completion(handle: RuntimeHandle) -> int:
+    await _start_background_tasks(handle)
+
     service_done = handle.service_task
     server_done = handle.server_task
     stop_wait = asyncio.create_task(handle.stop_event.wait())
@@ -332,22 +337,13 @@ async def _wait_for_completion(handle: RuntimeHandle) -> int:
         done, _pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
         if stop_wait in done:
             handle.stop()
-            # Drain the rest.
             rest = set(pending) - {stop_wait}
             if rest:
                 await asyncio.wait(rest, return_when=asyncio.ALL_COMPLETED)
-            for t in rest:
-                exc = _task_exception(t)
-                if exc is not None and not isinstance(exc, asyncio.CancelledError):
-                    return 1
-            return 0
+            return _check_tasks_for_errors(rest)
         # service or server finished on its own
         handle.stop()
-        for t in done:
-            exc = _task_exception(t)
-            if exc is not None and not isinstance(exc, asyncio.CancelledError):
-                return 1
-        return 0
+        return _check_tasks_for_errors(done)
     finally:
         if not stop_wait.done():
             stop_wait.cancel()
@@ -358,6 +354,14 @@ def _task_exception(task: Any) -> BaseException | None:  # noqa: ANN401
         return task.exception()  # type: ignore[no-any-return]
     except (asyncio.CancelledError, asyncio.InvalidStateError):
         return None
+
+
+def _check_tasks_for_errors(tasks: set[Any]) -> int:
+    for t in tasks:
+        exc = _task_exception(t)
+        if exc is not None and not isinstance(exc, asyncio.CancelledError):
+            return 1
+    return 0
 
 
 __all__ = [

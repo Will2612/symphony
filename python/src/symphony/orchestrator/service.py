@@ -226,7 +226,9 @@ class OrchestratorService:
 
         Caller MUST hold `self.state.lock`."""
         try:
-            workspace = self.workspace_manager.create_for_issue(issue.identifier, issue_id=issue.id)
+            workspace = await self.workspace_manager.create_for_issue(
+                issue.identifier, issue_id=issue.id
+            )
         except Exception:
             _LOGGER.exception("workspace creation failed for %s", issue.identifier)
             outcome.failed.append(issue.identifier)

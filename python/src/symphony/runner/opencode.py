@@ -214,7 +214,12 @@ class OpenCodeRunner:
 
             # 1) initialize
             await server.send_message(
-                {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {"protocolVersion": 1},
+                }
             )
             init_response = await _read_with_timeout(server, self.config.codex.read_timeout_ms)
             _check_error_response(init_response)
@@ -233,7 +238,7 @@ class OpenCodeRunner:
                     "jsonrpc": "2.0",
                     "id": 2,
                     "method": "session/new",
-                    "params": {"cwd": str(ws_path)},
+                    "params": {"cwd": str(ws_path), "mcpServers": []},
                 }
             )
             session_response = await _read_with_timeout(server, self.config.codex.read_timeout_ms)
@@ -247,7 +252,7 @@ class OpenCodeRunner:
                     "method": "session/prompt",
                     "params": {
                         "sessionId": _extract_session_id(session_response),
-                        "prompt": prompt,
+                        "prompt": [{"type": "text", "text": prompt}],
                     },
                 }
             )
