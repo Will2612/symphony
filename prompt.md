@@ -115,3 +115,20 @@ Interpretation / follow-up actions:
 - The rule is documented in this file's header AND in `python/AGENTS.md` so it survives context resets.
 
 Outcome: rule updated. Future prompts without the `[Guideline]` prefix are not recorded.
+
+---
+
+## Entry 8 — Prefer the `question` tool for clarifying questions
+
+**[Guideline]**
+提问时优先使用question工具
+
+Interpretation / follow-up actions:
+- When the assistant needs to ask the user to choose between discrete options, clarify a parameter, or confirm a setting, prefer the `question` tool over free-form text questions.
+- Reserve free-form prose questions for open-ended / qualitative asks where there is no enumerable option set.
+- A single `question` tool call may carry multiple related questions (the tool supports a list).
+- Each question's `options` list should be 2-4 short, mutually exclusive, mutually exhaustive choices; mark the recommended one first; `description` explains tradeoffs.
+- The `custom` input is auto-enabled — users can also type their own answer if no option fits.
+- This guideline does not override the Entry 2 prompt.md logging rule: even when a `question` call is in play, the user is not assumed to have issued a `[Guideline]` unless the message starts with that literal marker.
+
+Outcome: future clarifying questions go through the `question` tool by default.
