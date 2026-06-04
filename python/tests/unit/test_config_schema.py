@@ -82,6 +82,31 @@ def test_tracker_terminal_states_default() -> None:
     assert cfg.tracker.terminal_states == ["closed"]
 
 
+def test_tracker_project_number_default_is_none() -> None:
+    cfg = SymphonyConfig.model_validate({})
+    assert cfg.tracker.project_number is None
+
+
+def test_tracker_project_number_can_be_set() -> None:
+    cfg = SymphonyConfig.model_validate({"tracker": {"project_number": 3}})
+    assert cfg.tracker.project_number == 3
+
+
+def test_tracker_active_statuses_default_is_todo() -> None:
+    cfg = SymphonyConfig.model_validate({})
+    assert cfg.tracker.active_statuses == ["Todo"]
+
+
+def test_tracker_active_statuses_can_be_overridden() -> None:
+    cfg = SymphonyConfig.model_validate({"tracker": {"active_statuses": ["Todo", "In Progress"]}})
+    assert cfg.tracker.active_statuses == ["Todo", "In Progress"]
+
+
+def test_tracker_active_statuses_can_be_empty() -> None:
+    cfg = SymphonyConfig.model_validate({"tracker": {"active_statuses": []}})
+    assert cfg.tracker.active_statuses == []
+
+
 def test_polling_interval_ms_default_is_30000() -> None:
     cfg = SymphonyConfig.model_validate({})
     assert cfg.polling.interval_ms == 30_000

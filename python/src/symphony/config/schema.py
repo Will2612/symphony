@@ -9,6 +9,13 @@ Per the plan and SPEC:
 - `tracker.kind` is restricted to known adapter values; "github"
   and "memory" are first-class, with room for future kinds.
 - `tracker.endpoint` defaults to https://api.github.com.
+- `tracker.project_number` opts the GitHub adapter into reading
+  issue Status from a linked Projects v2 board. When unset (None)
+  or zero, the adapter falls back to GitHub state filtering only.
+- `tracker.active_statuses` is the list of project Status field
+  values that mark an issue as eligible for dispatch. Defaults to
+  `["Todo"]` (the natural entry point of a v2 board). Empty list
+  disables project-status filtering.
 - `codex.command` is preserved verbatim (never subject to $VAR
   indirection).
 - `worker.ssh_hosts` is parsed but unused in v1.
@@ -37,6 +44,8 @@ class Tracker(BaseModel):
     active_states: list[str] = Field(default_factory=lambda: ["open"])
     terminal_states: list[str] = Field(default_factory=lambda: ["closed"])
     endpoint: str = "https://api.github.com"
+    project_number: int | None = None
+    active_statuses: list[str] = Field(default_factory=lambda: ["Todo"])
 
 
 class Polling(BaseModel):

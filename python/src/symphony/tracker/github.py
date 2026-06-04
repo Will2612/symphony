@@ -50,7 +50,9 @@ _LOGGER = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT_S = 30.0
 _USER_AGENT = "symphony-py/0.1"
 _ACCEPT = "application/vnd.github+json"
+_ACCEPT_GQL = "application/vnd.github+json"
 _API_VERSION = "2022-11-28"
+_GRAPHQL_PATH = "/graphql"
 
 
 def _raw_to_normalized(raw: dict[str, Any]) -> dict[str, Any]:
@@ -61,7 +63,6 @@ def _raw_to_normalized(raw: dict[str, Any]) -> dict[str, Any]:
     - `id`          -> `id` (numeric, coerced to str)
     - `number`      -> `identifier` (with `#` prefix)
     - `title`       -> `title`
-    - `body`        -> `description`
     - `state`       -> `state`
     - `html_url`    -> `url`
     - `labels[]`    -> label name strings
@@ -91,6 +92,41 @@ def _raw_to_normalized(raw: dict[str, Any]) -> dict[str, Any]:
         "created_at": raw.get("created_at"),
         "updated_at": raw.get("updated_at"),
     }
+
+
+def _gql_issue_to_normalized(content: object) -> Issue | None:
+    """Translate a GraphQL `ProjectV2Item.content` Issue payload into
+    a normalized `Issue`.
+
+    Returns `None` if the payload is not a usable Issue (e.g. PR,
+    draft issue, or a content node missing a `number`).
+    """
+    if not content or not isinstance(content, dict):
+        return None
+    if content.get("__typename") not in (None, "Issue"):
+        return None
+    number = content.get("number")
+    if number is None:
+        return None
+    labels_payload = content.get("labels") or {}
+    label_nodes = labels_payload.get("nodes") if isinstance(labels_payload, dict) else None
+    if label_nodes is None:
+        label_nodes = []
+    raw: dict[str, Any] = {
+        "id": str(content.get("id") or ""),
+        "identifier": f"#{number}",
+        "title": content.get("title") or "",
+        "state": (content.get("state") or "").lower(),
+        "description": content.get("body") or None,
+        "priority": None,
+        "branch_name": None,
+        "url": content.get("url"),
+        "labels": [ln.get("name") for ln in label_nodes if isinstance(ln, dict) and ln.get("name")],
+        "inverse_relations": _extract_blocked_by_from_body(content.get("body") or ""),
+        "created_at": content.get("createdAt"),
+        "updated_at": content.get("updatedAt"),
+    }
+    return normalize_issue(raw)
 
 
 def _extract_blocked_by_from_body(body: str) -> list[dict[str, Any]]:
@@ -187,6 +223,13 @@ class GitHubTracker:
         self._api_key = config.tracker.api_key
         self._active_states = [s.lower() for s in config.tracker.active_states]
         self._terminal_states = [s.lower() for s in config.tracker.terminal_states]
+        self._project_number = config.tracker.project_number
+        self._active_statuses = [s.lower() for s in config.tracker.active_statuses]
+        if self._project_number:
+            owner = self._project_slug.split("/", 1)[0] if self._project_slug else ""
+            self._project_owner = owner
+        else:
+            self._project_owner = ""
         if client is None:
             self._client = httpx.AsyncClient(
                 timeout=httpx.Timeout(_DEFAULT_TIMEOUT_S),
@@ -213,12 +256,67 @@ class GitHubTracker:
         """Headers for every request: defaults + bearer token."""
         return {**self._default_headers(), "authorization": f"Bearer {self._api_key}"}
 
+    async def _post_graphql(
+        self, query: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """POST a GraphQL query to the configured GitHub endpoint.
+
+        Returns the `data` field of the response, or raises the
+        same `GitHub*` error types as REST calls on transport /
+        HTTP / non-2xx / non-JSON responses. `errors` payloads are
+        raised as `GitHubAPIStatus` with the first error message.
+        """
+        url = f"{self.endpoint}{_GRAPHQL_PATH}"
+        body: dict[str, Any] = {"query": query}
+        if variables:
+            body["variables"] = variables
+        try:
+            response = await self._client.post(url, json=body, headers=self._request_headers())
+        except httpx.HTTPError as e:
+            raise GitHubAPIRequest(f"github transport error: {e}", code="github_api_request") from e
+        if response.status_code != 200:
+            raise _map_status_error(response.status_code, response.text, response.headers)
+        try:
+            payload = response.json()
+        except json.JSONDecodeError as e:
+            raise GitHubUnknownPayload(
+                f"github graphql returned non-JSON payload: {e}",
+                code="github_unknown_payload",
+            ) from e
+        if not isinstance(payload, dict):
+            raise GitHubUnknownPayload(
+                f"github graphql expected object, got {type(payload).__name__}",
+                code="github_unknown_payload",
+            )
+        errors = payload.get("errors")
+        if errors:
+            first = errors[0]
+            msg = first.get("message") if isinstance(first, dict) else str(first)
+            raise GitHubAPIStatus(f"github graphql error: {msg}", code="github_api_status")
+        data: dict[str, Any] = payload.get("data")  # type: ignore[assignment]
+        if not isinstance(data, dict):
+            raise GitHubUnknownPayload(
+                f"github graphql response missing 'data' object: {payload!r}",
+                code="github_unknown_payload",
+            )
+        return data
+
     async def fetch_candidate_issues(self) -> Sequence[Issue]:
-        """Fetch issues in any of the configured active states."""
+        """Fetch issues in any of the configured active states.
+
+        When `tracker.project_number` is set, this routes through
+        the Projects v2 GraphQL API and additionally filters by the
+        issue's Status field value (`tracker.active_statuses`).
+        When `project_number` is unset, the original REST path is
+        used and the Status filter is skipped.
+        """
+        if self._project_number:
+            return await self._fetch_candidate_issues_via_project()
+        return await self._fetch_candidate_issues_via_rest()
+
+    async def _fetch_candidate_issues_via_rest(self) -> Sequence[Issue]:
+        """REST-based candidate fetch: only filters by `active_states`."""
         issues: list[Issue] = []
-        # GitHub only knows open/closed natively. We accept any of
-        # the configured active states; the only sensible mapping is
-        # "open" -> "open" and any other -> "all" (no filter).
         state_param = self._state_query_param()
         url: str | None = f"{self.endpoint}/repos/{self._project_slug}/issues"
         params: dict[str, Any] = {"state": state_param, "per_page": 100}
@@ -247,19 +345,12 @@ class GitHubTracker:
             for raw in payload:
                 if not isinstance(raw, dict):
                     continue
-                # Pull requests are also returned by /issues; skip them.
                 if "pull_request" in raw:
                     continue
                 normalized = normalize_issue(_raw_to_normalized(raw))
-                # Apply state filter manually because GitHub's `state`
-                # param is binary.
                 if normalized.state.lower() not in self._active_states:
                     continue
                 issues.append(normalized)
-            # Pagination: a page shorter than `per_page` is the
-            # natural end-of-results signal. A full page without a
-            # `Link: rel="next"` header is a pagination integrity
-            # error (SPEC §17).
             link = response.headers.get("link")
             next_url = _parse_link_header(link)
             if next_url is None and len(payload) >= 100:
@@ -268,8 +359,99 @@ class GitHubTracker:
                     code="github_pagination_missing_link",
                 )
             url = next_url
-            params = {}  # subsequent URLs are absolute with their own query
+            params = {}
         return issues
+
+    async def _fetch_candidate_issues_via_project(self) -> Sequence[Issue]:
+        """GraphQL-based candidate fetch via the linked Projects v2 board.
+
+        Fetches items belonging to the configured project number
+        (under the repo's owner) and keeps only those whose content
+        is an Issue, whose GitHub state is in `active_states`, and
+        whose project Status field value is in `active_statuses`.
+        Issues with no Status value (missing field value) are
+        skipped when `active_statuses` is non-empty.
+        """
+        assert self._project_number is not None
+        if not self._project_owner:
+            raise GitHubAPIStatus(
+                "tracker.project_number set but tracker.project_slug is empty; "
+                "cannot derive project owner",
+                code="github_api_status",
+            )
+        query = """
+        query($owner: String!, $number: Int!, $first: Int!, $after: String) {
+          user(login: $owner) {
+            projectV2(number: $number) {
+              items(first: $first, after: $after) {
+                pageInfo { hasNextPage endCursor }
+                nodes {
+                  id
+                  fieldValueByName(name: "Status") {
+                    ... on ProjectV2ItemFieldSingleSelectValue { name }
+                  }
+                  content {
+                    __typename
+                    ... on Issue {
+                      id
+                      number
+                      title
+                      state
+                      body
+                      url
+                      createdAt
+                      updatedAt
+                      labels(first: 20) { nodes { name } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+        issues: list[Issue] = []
+        cursor: str | None = None
+        status_filter_active = bool(self._active_statuses)
+        status_set = set(self._active_statuses)
+        while True:
+            variables: dict[str, Any] = {
+                "owner": self._project_owner,
+                "number": self._project_number,
+                "first": 100,
+            }
+            if cursor:
+                variables["after"] = cursor
+            data = await self._post_graphql(query, variables)
+            user_block = data.get("user") or {}
+            project = user_block.get("projectV2") if isinstance(user_block, dict) else None
+            if not project:
+                return issues
+            items_block = project.get("items") or {}
+            nodes = items_block.get("nodes") or []
+            page_info = items_block.get("pageInfo") or {}
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                content = node.get("content")
+                normalized = _gql_issue_to_normalized(
+                    content if isinstance(content, dict) else None
+                )
+                if normalized is None:
+                    continue
+                if normalized.state.lower() not in self._active_states:
+                    continue
+                if status_filter_active:
+                    fv = node.get("fieldValueByName")
+                    status_name = fv.get("name") if isinstance(fv, dict) else None
+                    if not status_name or status_name.lower() not in status_set:
+                        continue
+                issues.append(normalized)
+            if not page_info.get("hasNextPage"):
+                return issues
+            cursor = page_info.get("endCursor")
+            if not cursor:
+                return issues
 
     def _state_query_param(self) -> str:
         """Map active_states config to a single GitHub `state` query

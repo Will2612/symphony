@@ -819,3 +819,285 @@ async def test_github_tracker_aclose_does_not_close_injected_client() -> None:
     await tracker.aclose()
     # If we tried to close a non-owned client, this would fail.
     await sentinel_client.get("https://api.github.com/test")
+
+
+# ---------------------------------------------------------------------------
+# Projects v2 (GraphQL) candidate fetch
+# ---------------------------------------------------------------------------
+
+
+def _gql_item(
+    number: int,
+    *,
+    state: str = "OPEN",
+    status: str | None = "Todo",
+    title: str = "GraphQL issue",
+    body: str = "",
+    labels: list[str] | None = None,
+) -> dict[str, Any]:
+    label_names = labels if labels is not None else []
+    content: dict[str, Any] = {
+        "__typename": "Issue",
+        "id": f"I_gql_{number}",
+        "number": number,
+        "title": title,
+        "state": state,
+        "body": body,
+        "url": f"https://github.com/owner/repo/issues/{number}",
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-02T00:00:00Z",
+        "labels": {"nodes": [{"name": n} for n in label_names]},
+    }
+    field_value: dict[str, Any] | None = None
+    if status is not None:
+        field_value = {"name": status}
+    return {"id": f"PVTI_{number}", "fieldValueByName": field_value, "content": content}
+
+
+def _gql_response(
+    items: list[dict[str, Any]],
+    *,
+    has_next: bool = False,
+    end_cursor: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "data": {
+            "user": {
+                "projectV2": {
+                    "items": {
+                        "pageInfo": {
+                            "hasNextPage": has_next,
+                            "endCursor": end_cursor,
+                        },
+                        "nodes": items,
+                    }
+                }
+            }
+        }
+    }
+
+
+async def test_github_tracker_project_path_uses_graphql() -> None:
+    captured: list[httpx.Request] = []
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json=_gql_response([_gql_item(1)]))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert len(issues) == 1
+    assert issues[0].identifier == "#1"
+    assert len(captured) == 1
+    assert captured[0].url.path == "/graphql"
+    body = json.loads(captured[0].content.decode())
+    assert body["variables"]["owner"] == "owner"
+    assert body["variables"]["number"] == 3
+
+
+async def test_github_tracker_project_path_filters_by_status() -> None:
+    items = [
+        _gql_item(1, status="Todo"),
+        _gql_item(2, status="In Progress"),
+        _gql_item(3, status="Done"),
+    ]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1"]
+
+
+async def test_github_tracker_project_path_skips_issues_without_status() -> None:
+    items = [_gql_item(1, status=None), _gql_item(2, status="Todo")]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#2"]
+
+
+async def test_github_tracker_project_path_skips_closed_issues() -> None:
+    items = [
+        _gql_item(1, state="OPEN", status="Todo"),
+        _gql_item(2, state="CLOSED", status="Todo"),
+    ]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1"]
+
+
+async def test_github_tracker_project_path_pagination() -> None:
+    page1 = [_gql_item(i) for i in (1, 2)]
+    page2 = [_gql_item(i) for i in (3, 4)]
+    responses = iter(
+        [
+            httpx.Response(200, json=_gql_response(page1, has_next=True, end_cursor="C1")),
+            httpx.Response(200, json=_gql_response(page2, has_next=False)),
+        ]
+    )
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1", "#2", "#3", "#4"]
+
+
+async def test_github_tracker_project_path_empty_active_states_passes_through() -> None:
+    items = [_gql_item(1, status="Done"), _gql_item(2, status="Todo")]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(update={"project_number": 3, "active_statuses": []})
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1", "#2"]
+
+
+async def test_github_tracker_project_path_raises_without_slug() -> None:
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response([]))
+
+    cfg = SymphonyConfig.model_validate(
+        {"tracker": {"kind": "github", "api_key": "k", "project_number": 3}}
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    with pytest.raises(GitHubAPIStatus):
+        await tracker.fetch_candidate_issues()
+
+
+async def test_github_tracker_project_path_handles_graphql_errors() -> None:
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"errors": [{"message": "Could not resolve to a node"}]})
+
+    cfg = _config()
+    cfg = cfg.model_copy(update={"tracker": cfg.tracker.model_copy(update={"project_number": 3})})
+    tracker, _ = _make_tracker(cfg, _handler)
+    with pytest.raises(GitHubAPIStatus):
+        await tracker.fetch_candidate_issues()
+
+
+async def test_github_tracker_project_path_status_match_is_case_insensitive() -> None:
+    items = [_gql_item(1, status="todo"), _gql_item(2, status="DONE")]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1"]
+
+
+async def test_github_tracker_project_path_skips_pr_content() -> None:
+    pr_content = {
+        "__typename": "PullRequest",
+        "id": "PR_gql_99",
+        "number": 99,
+        "title": "A PR",
+        "state": "OPEN",
+        "body": "",
+        "url": "https://github.com/owner/repo/pull/99",
+        "createdAt": "2024-01-01T00:00:00Z",
+        "updatedAt": "2024-01-02T00:00:00Z",
+        "labels": {"nodes": []},
+    }
+    issue_content = _gql_item(1, status="Todo")["content"]
+    items = [
+        {"id": "PVTI_PR", "fieldValueByName": None, "content": pr_content},
+        {"id": "PVTI_1", "fieldValueByName": {"name": "Todo"}, "content": issue_content},
+    ]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_gql_response(items))
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={
+            "tracker": cfg.tracker.model_copy(
+                update={"project_number": 3, "active_statuses": ["Todo"]}
+            )
+        }
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1"]
+
+
+async def test_github_tracker_without_project_number_uses_rest() -> None:
+    page = [_issue_payload(1, state="open")]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        assert "graphql" not in request.url.path
+        return httpx.Response(200, json=page)
+
+    cfg = _config()
+    cfg = cfg.model_copy(
+        update={"tracker": cfg.tracker.model_copy(update={"active_statuses": ["Todo"]})}
+    )
+    tracker, _ = _make_tracker(cfg, _handler)
+    issues = await tracker.fetch_candidate_issues()
+    assert [i.identifier for i in issues] == ["#1"]
