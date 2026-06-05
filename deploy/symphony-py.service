@@ -1,0 +1,51 @@
+[Unit]
+Description=Symphony orchestrator (Python)
+Documentation=https://github.com/openai/symphony
+After=network-online.target
+Wants=network-online.target
+# Don't auto-start at boot if a pull is in flight; the timer will catch up.
+# Stop cleanly on shutdown; let Restart=on-failure handle crashes.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=symphony
+Group=symphony
+WorkingDirectory=/opt/symphony/python
+
+# Pulled in by the pull script (deploy/pull-and-restart.sh).
+# Required: GITHUB_TOKEN (and OPENCODE_API_KEY if your runner needs one).
+# The orchestrator's own log layer never logs the api_key field.
+EnvironmentFile=/etc/symphony/symphony.env
+
+ExecStart=/opt/symphony/python/.venv/bin/symphony \
+    /etc/symphony/WORKFLOW.md \
+    --i-understand-that-this-will-be-running-without-the-usual-guardrails
+ExecStop=/bin/kill -SIGTERM $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=60
+TimeoutStartSec=120
+
+Restart=on-failure
+RestartSec=10
+
+# Light hardening. The orchestrator reads from /opt and /etc, writes
+# workspaces per WORKFLOW.md (caller's responsibility to scope paths).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=symphony-py
+
+[Install]
+WantedBy=multi-user.target

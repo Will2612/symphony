@@ -1,0 +1,29 @@
+# docker-compose.yml for Symphony on a single host.
+# Use:  docker compose pull && docker compose up -d
+# Override image tag or service args by editing the service definition below.
+
+services:
+  symphony:
+    image: ghcr.io/will2612/symphony:python_implementation_trial
+    container_name: symphony
+    restart: unless-stopped
+    env_file:
+      - /etc/symphony/symphony.env
+    volumes:
+      - /etc/symphony/WORKFLOW.md:/etc/symphony/WORKFLOW.md:ro
+      - symphony-workspaces:/var/lib/symphony/workspaces
+    command:
+      - /etc/symphony/WORKFLOW.md
+      - --i-understand-that-this-will-be-running-without-the-usual-guardrails
+    security_opt:
+      - no-new-privileges:true
+    # Uncomment to expose the observability HTTP server.
+    # ports:
+    #   - "127.0.0.1:7842:7842"
+    # /tmp as tmpfs (image runs as non-root; only /tmp needs scratch).
+    tmpfs:
+      - /tmp
+
+volumes:
+  symphony-workspaces:
+    name: symphony-workspaces

@@ -1,0 +1,15 @@
+[Unit]
+Description=Poll origin/main every 1 minute and redeploy Symphony
+
+[Timer]
+# First run 30s after boot, then every minute on the minute-ish.
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=5s
+# Don't pile up missed runs; if the Pi is off for an hour, we don't
+# fire 60 times in a row when it comes back. One run is enough.
+Persistent=false
+Unit=symphony-py-pull.service
+
+[Install]
+WantedBy=timers.target

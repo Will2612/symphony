@@ -1,0 +1,29 @@
+[Unit]
+Description=Pull latest Symphony from origin/main and restart the orchestrator
+Documentation=https://github.com/openai/symphony
+# Triggered by symphony-py.timer. Do not enable directly.
+
+[Service]
+Type=oneshot
+User=root
+# Runs as root because it (a) restarts a system service and
+# (b) writes to /opt/symphony owned by the symphony user.
+# The script is idempotent and refuses to run on a dirty working tree.
+
+WorkingDirectory=/opt/symphony
+ExecStart=/opt/symphony/deploy/pull-and-restart.sh
+# If a pull is slow (e.g. large venv re-sync), let it finish.
+TimeoutStartSec=300
+
+# Hardening: the script needs network (git fetch) and write access to
+# the repo + venv. ReadWritePaths is the carve-out from ProtectSystem=strict.
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/symphony /etc/symphony
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=symphony-py-pull
+
+[Install]
+WantedBy=multi-user.target
