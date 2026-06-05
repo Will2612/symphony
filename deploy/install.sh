@@ -30,6 +30,19 @@ command -v docker >/dev/null 2>&1 \
 docker compose version >/dev/null 2>&1 \
   || die "docker compose v2 plugin not found. Install docker-compose-plugin"
 
+# Install opencode runner (host) — bind-mounted into the container.
+# Idempotent: skipped if already on PATH. Setting OPENCODE_INSTALL_DIR pins the
+# binary to /usr/local/bin so deploy/docker-compose.yml can bind-mount it.
+if ! command -v opencode >/dev/null 2>&1; then
+  log "installing opencode to /usr/local/bin"
+  curl -fsSL https://opencode.ai/install | \
+    OPENCODE_INSTALL_DIR=/usr/local/bin bash -s -- --no-modify-path
+  command -v opencode >/dev/null 2>&1 \
+    || die "opencode install did not produce /usr/local/bin/opencode"
+else
+  log "opencode already installed: $(command -v opencode)"
+fi
+
 if [ ! -d "$REPO_DIR/.git" ]; then
   log "cloning $REPO_URL -> $REPO_DIR (branch: $BRANCH)"
   git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"

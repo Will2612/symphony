@@ -11,6 +11,7 @@ services:
       - /etc/symphony/symphony.env
     volumes:
       - /etc/symphony/WORKFLOW.md:/etc/symphony/WORKFLOW.md:ro
+      - /usr/local/bin/opencode:/usr/local/bin/opencode:ro
       - symphony-workspaces:/var/lib/symphony/workspaces
     command:
       - /etc/symphony/WORKFLOW.md
