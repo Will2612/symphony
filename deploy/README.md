@@ -52,12 +52,11 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
   ```
 - **opencode (runner binary)** — the agent subprocess that the orchestrator spawns.
   Installed on the **host** and bind-mounted read-only into the container at
-  `/usr/local/bin/opencode` (see `deploy/docker-compose.yml`). The `deploy/install.sh`
-  script installs it for you if missing; to install manually:
-  ```bash
-  curl -fsSL https://opencode.ai/install | \
-    OPENCODE_INSTALL_DIR=/usr/local/bin bash -s -- --no-modify-path
-  ```
+  `/usr/local/bin/opencode` (see `deploy/docker-compose.yml`). opencode is a **strict
+  prerequisite** — `install.sh` does NOT install it. The host path is configurable
+  via `OPENCODE_BIND_SOURCE` in `deploy/.env`; default is `~/.opencode/bin/opencode`.
+  If you have opencode elsewhere, edit `OPENCODE_BIND_SOURCE` in `deploy/.env` after
+  running `install.sh`.
   arm64 glibc binary is required (Pi 5 / Ubuntu 24.04 are glibc).
 
 Verify:
@@ -66,8 +65,8 @@ docker compose version
 # Docker Compose version v2.24+
 ```
 ```bash
-command -v opencode
-# /usr/local/bin/opencode
+grep OPENCODE_BIND_SOURCE /opt/symphony/deploy/.env
+# OPENCODE_BIND_SOURCE=~/.opencode/bin/opencode
 ```
 
 > **Not** using podman, containerd, or `docker-compose` (v1 standalone).
@@ -88,7 +87,7 @@ This script:
 3. Seeds `/etc/symphony/symphony.env` from the example
 4. Seeds `/etc/symphony/WORKFLOW.md` from `python/examples/`
 5. Installs the three systemd units (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`)
-6. Installs `opencode` to `/usr/local/bin` if not already present
+6. Seeds `deploy/.env` and records `OPENCODE_BIND_SOURCE` (the host path to your opencode install). The script does NOT install opencode; opencode is a prerequisite. See `deploy/README.md §Prerequisites`.
 
 It does **not** start or enable any services.
 
