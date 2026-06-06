@@ -30,18 +30,37 @@ command -v docker >/dev/null 2>&1 \
 docker compose version >/dev/null 2>&1 \
   || die "docker compose v2 plugin not found. Install docker-compose-plugin"
 
-# Install opencode runner (host) — bind-mounted into the container.
-# Idempotent: skipped if already on PATH. Setting OPENCODE_INSTALL_DIR pins the
-# binary to /usr/local/bin so deploy/docker-compose.yml can bind-mount it.
-if ! command -v opencode >/dev/null 2>&1; then
-  log "installing opencode to /usr/local/bin"
-  curl -fsSL https://opencode.ai/install | \
-    OPENCODE_INSTALL_DIR=/usr/local/bin bash -s -- --no-modify-path
-  command -v opencode >/dev/null 2>&1 \
-    || die "opencode install did not produce /usr/local/bin/opencode"
-else
-  log "opencode already installed: $(command -v opencode)"
+# OpenCode bind-mount source. install.sh does NOT install opencode;
+# it's a strict prerequisite. The bind-mount source is read from
+# deploy/.env (sibling of this file). If OPENCODE_BIND_SOURCE is
+# unset, auto-detect from the invoking user's ~/.opencode/bin/opencode
+# and write it. The user can override by editing deploy/.env.
+DEPLOY_ENV="$DEPLOY_DIR/.env"
+if [ ! -f "$DEPLOY_ENV" ]; then
+  if [ -f "$DEPLOY_DIR/.env.example" ]; then
+    log "seeding $DEPLOY_ENV from .env.example"
+    install -m 0640 -o root -g root \
+      "$DEPLOY_DIR/.env.example" "$DEPLOY_ENV"
+  else
+    die "missing $DEPLOY_DIR/.env.example; cannot seed $DEPLOY_ENV"
+  fi
 fi
+if ! grep -q '^OPENCODE_BIND_SOURCE=' "$DEPLOY_ENV" 2>/dev/null; then
+  if [ -n "${SUDO_USER:-}" ]; then
+    _user_home="$(getent passwd "$SUDO_USER" | cut -d: -f6 || true)"
+  else
+    _user_home="$HOME"
+  fi
+  _detected="${_user_home:-$HOME}/.opencode/bin/opencode"
+  printf '\nOPENCODE_BIND_SOURCE=%s\n' "$_detected" >> "$DEPLOY_ENV"
+  log "wrote OPENCODE_BIND_SOURCE=$_detected to $DEPLOY_ENV"
+fi
+# shellcheck disable=SC1090
+OPENCODE_BIND_SOURCE="$(. "$DEPLOY_ENV" && printf '%s' "${OPENCODE_BIND_SOURCE:-}")"
+if [ ! -x "$OPENCODE_BIND_SOURCE" ]; then
+  die "opencode not found at \$OPENCODE_BIND_SOURCE=$OPENCODE_BIND_SOURCE. Install opencode first, or set OPENCODE_BIND_SOURCE in $DEPLOY_ENV. See deploy/README.md §Prerequisites."
+fi
+log "opencode found at $OPENCODE_BIND_SOURCE"
 
 if [ ! -d "$REPO_DIR/.git" ]; then
   log "cloning $REPO_URL -> $REPO_DIR (branch: $BRANCH)"
