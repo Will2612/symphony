@@ -41,6 +41,7 @@ install and run for that implementation. **Read both before proposing changes.**
   Threshold: 100% coverage on the non-ignored modules (see `mix.exs`).
 - Python: `make -C python all` (ruff format + ruff check + mypy --strict +
   pytest + coverage). Threshold: 95% on `src/symphony/`.
+- Deploy: `make -C deploy all` (syntax + smoke; see `deploy/README.md §Verifying deploy changes`).
 
 CI (`.github/workflows/make-all.yml`) only runs the Elixir gate. The Python
 gate is local-only until the Python implementation is feature-complete.
