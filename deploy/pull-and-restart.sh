@@ -9,7 +9,7 @@ set -euo pipefail
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/symphony}"
 SERVICE_NAME="${SERVICE_NAME:-symphony}"
 
-log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; sync; }
 err() { log "ERROR: $*" >&2; }
 
 if ! command -v docker >/dev/null 2>&1; then
