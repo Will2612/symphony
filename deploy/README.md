@@ -229,3 +229,79 @@ docker rmi $(docker images 'ghcr.io/will2612/symphony*' -q)
 - **Workspace on named volume** — workspaces are stored in Docker's named
   volume, not on the host filesystem. Bind-mount a host directory into the
   container if you need host access to workspace artifacts.
+
+## Pi 5 Environment Checklist
+
+Run these on the Pi before installing. Fix any missing items before proceeding.
+
+### Hardware & OS
+- [ ] `uname -m` → `aarch64` (Pi 5 is arm64; image is linux/arm64 only)
+- [ ] `df -h /` — ≥ 32 GB available on root or a dedicated SSD/SD
+- [ ] `free -h` — ≥ 4 GB RAM (8 GB recommended)
+
+### Core Software (all on host)
+- [ ] `docker --version` — Docker Engine 24+ required
+- [ ] `docker compose version` — v2 plugin (NOT v1 standalone `docker-compose`)
+- [ ] `curl --version` — for the one-line install recipe
+- [ ] `git --version` — for `install.sh` cloning and branch updates
+- [ ] `bash --version` — ≥ 4 (Ubuntu 24.04 ships 5.1)
+- [ ] `systemctl --version` — systemd ≥ 230 (Ubuntu 24.04 has 255)
+- [ ] `dpkg -l ca-certificates` — for TLS to GHCR and GitHub
+
+### Host-side Runner (NOT in container)
+- [ ] `file ~/.opencode/bin/opencode` — must show `ELF 64-bit LSB executable, ARM aarch64` (glibc, not musl)
+- [ ] `test -x ~/.opencode/bin/opencode` — executable bit set
+- [ ] Or: `OPENCODE_BIND_SOURCE` set in `deploy/.env` if opencode is installed elsewhere
+
+### Configuration Files
+- [ ] `/etc/symphony/symphony.env` exists — `chmod 640`, owned `root:root`
+  - [ ] `GITHUB_TOKEN` is set (fine-grained PAT with repo read+write)
+  - [ ] `OPENCODE_API_KEY` is set (if your runner needs one)
+- [ ] `/etc/symphony/WORKFLOW.md` exists — `chmod 640`
+  - [ ] `tracker.project_slug` points to your repo (e.g. `Will2612/symphony`)
+  - [ ] `workspace.root` is set and non-empty
+
+### Systemd Units
+- [ ] `systemctl status symphony-py-pull.service` — installed and not failed
+- [ ] `systemctl status symphony-py.timer` — installed and not failed
+- [ ] `systemctl status symphony-py.service` — installed and not failed
+
+### Network (outbound, port 443)
+- [ ] `curl -s -o /dev/null -w "%{http_code}" https://github.com` → 200
+- [ ] `curl -s -o /dev/null -w "%{http_code}" https://ghcr.io` → 200
+- [ ] `curl -s -o /dev/null -w "%{http_code}" https://api.github.com` → 200
+
+### First-run Verification
+```bash
+# Pull the image (run once before enabling the service)
+cd /opt/symphony && docker compose pull
+
+# Foreground test — should see the Symphony banner and tracker polling
+cd /opt/symphony && docker compose up
+
+# Enable the service (after confirming the foreground test works)
+sudo systemctl enable --now symphony-py.service
+
+# Watch logs
+sudo journalctl -u symphony-py.service -f
+```
+
+### ⚠️ `symphony-py.service` was rewritten (v1.1+)
+
+The service file shipped before v1.1 called the Python venv directly
+(`ExecStart=/opt/symphony/python/.venv/bin/symphony …`) and ran as a
+non-root `symphony` user. That version is broken — `install.sh` does not
+create that user or the venv.
+
+If you are upgrading from an older install, re-run:
+```bash
+sudo systemctl disable --now symphony-py.service
+sudo install -m 0644 /opt/symphony/deploy/symphony-py.service \
+               /etc/systemd/system/symphony-py.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now symphony-py.service
+```
+
+The new unit runs `docker compose up -d` as root and keeps the container
+alive across reboots. The `symphony-py.timer` calls `pull-and-restart.sh`
+to pull new images before the recreate.
