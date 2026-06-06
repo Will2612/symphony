@@ -1,0 +1,8 @@
+# Override for smoke-test verification (temporary container).
+# Usage: docker compose -f deploy/docker-compose.yml -f deploy/verify.override.yml up --build --abort-on-container-exit
+# The container_name avoids collision with the running symphony-py.service container.
+services:
+  symphony:
+    container_name: symphony-verify
+    restart: "no"
+    env_file:
