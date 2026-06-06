@@ -1,0 +1,2 @@
+QA Scenario 2.1: PASS
+Volumes: ['/etc/symphony/WORKFLOW.md:/etc/symphony/WORKFLOW.md:ro', '${OPENCODE_BIND_SOURCE}:/usr/local/bin/opencode:ro', 'symphony-workspaces:/var/lib/symphony/workspaces']
