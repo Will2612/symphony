@@ -19,7 +19,7 @@ PYTHON_DIR="${PYTHON_DIR:-${REPO_DIR}/python}"
 ETC_DIR="${ETC_DIR:-/etc/symphony}"
 DEPLOY_DIR="${REPO_DIR}/deploy"
 
-log() { printf '[install] %s\n' "$*"; }
+log() { printf '[install] %s\n' "$*"; sync; }
 err() { log "ERROR: $*" >&2; }
 die() { err "$*"; exit 1; }
 
