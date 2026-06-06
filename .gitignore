@@ -1,2 +1,5 @@
 .idea/
 .omo/
+*.deb
+deploy/.env
+deploy/logs/
