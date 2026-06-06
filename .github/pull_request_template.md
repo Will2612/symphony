@@ -19,4 +19,5 @@
 #### Test Plan
 
 - [ ] `make -C elixir all`
+- [ ] `make -C deploy verify` — syntax + compose config (required for any deploy/ path changes)
 - [ ] <!-- Additional targeted checks (list below) -->

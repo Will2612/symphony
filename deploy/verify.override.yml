@@ -5,4 +5,9 @@ services:
   symphony:
     container_name: symphony-verify
     restart: "no"
-    env_file:
+    env_file: []
+    environment:
+      GITHUB_TOKEN: smoke-stub
+      OPENCODE_API_KEY: smoke-stub
+    volumes:
+      - ./verify.workflow.md:/etc/symphony/WORKFLOW.md:ro
