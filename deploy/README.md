@@ -78,7 +78,7 @@ Log in as root (or `sudo -i`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Will2612/symphony/python_implementation_trial/deploy/install.sh \
-  | bash -s -- --repo https://github.com/Will2612/symphony
+  | sudo bash -s -- --repo https://github.com/Will2612/symphony
 ```
 
 This script:
