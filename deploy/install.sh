@@ -8,6 +8,11 @@
 # Does NOT start the orchestrator service — you do that after configuring.
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Step 0/5: Resolve paths and defaults (no I/O, cannot fail)
+# ---------------------------------------------------------------------------
+# All path defaults are computed up front so every later step can log its
+# target paths in advance.
 REPO_DIR="${REPO_DIR:-/opt/symphony}"
 BRANCH="${BRANCH:-python_implementation_trial}"
 if [ -d "$REPO_DIR/.git" ]; then
@@ -23,83 +28,185 @@ log() { printf '[install] %s\n' "$*"; sync; }
 err() { log "ERROR: $*" >&2; }
 die() { err "$*"; exit 1; }
 
-[ "$(id -u)" -eq 0 ] || die "must run as root (use sudo)"
+# ---------------------------------------------------------------------------
+# Step 1/5: Prerequisite checks (MUST pass before any host change)
+# ---------------------------------------------------------------------------
+# These checks are read-only and run before we touch the filesystem,
+# systemd, or git. If any of them fail, the script aborts cleanly.
+log "step 1/5: checking prerequisites"
 
+# 1a. Must run as root: we install systemd units and write to /etc, /opt.
+log "  checking running as root"
+[ "$(id -u)" -eq 0 ] || die "must run as root (use sudo)"
+log "    OK (uid=0)"
+
+# 1b. Docker Engine is required to run the orchestrator container.
+log "  checking docker on PATH"
 command -v docker >/dev/null 2>&1 \
   || die "docker not on PATH. Install Docker first: see deploy/README.md §Prerequisites"
+log "    OK ($(command -v docker))"
+
+# 1c. docker compose v2 plugin is used by the systemd units we install.
+log "  checking docker compose v2 plugin"
 docker compose version >/dev/null 2>&1 \
   || die "docker compose v2 plugin not found. Install docker-compose-plugin"
+log "    OK"
 
-# OpenCode bind-mount source. install.sh does NOT install opencode;
-# it's a strict prerequisite. The bind-mount source is read from
-# deploy/.env (sibling of this file). If OPENCODE_BIND_SOURCE is
-# unset, auto-detect from the invoking user's ~/.opencode/bin/opencode
-# and write it. The user can override by editing deploy/.env.
-DEPLOY_ENV="$DEPLOY_DIR/.env"
-if [ ! -f "$DEPLOY_ENV" ]; then
-  if [ -f "$DEPLOY_DIR/.env.example" ]; then
-    log "seeding $DEPLOY_ENV from .env.example"
-    install -m 0640 -o root -g root \
-      "$DEPLOY_DIR/.env.example" "$DEPLOY_ENV"
+# 1d. opencode binary is bind-mounted into the container at runtime.
+# sudo's secure_path excludes ~/.opencode/bin/, hence the conventional-path fallback.
+log "  checking opencode binary"
+_user_home="$([ -n "${SUDO_USER:-}" ] && getent passwd "$SUDO_USER" | cut -d: -f6 || true)"
+_user_home="${_user_home:-$HOME}"
+_default_oc="$_user_home/.opencode/bin/opencode"
+_oc_path=""
+if _oc_path="$(command -v opencode 2>/dev/null)" && [ -x "$_oc_path" ]; then
+  log "    OK (on PATH: $_oc_path)"
+elif [ -x "$_default_oc" ]; then
+  _oc_path="$_default_oc"
+  log "    OK (default: $_oc_path)"
+elif [ -f "$DEPLOY_DIR/.env" ]; then
+  _custom_oc="$(. "$DEPLOY_DIR/.env" && printf '%s' "${OPENCODE_BIND_SOURCE:-}")"
+  if [ -n "$_custom_oc" ] && [ -x "$_custom_oc" ]; then
+    _oc_path="$_custom_oc"
+    log "    OK (custom from $DEPLOY_DIR/.env: $_oc_path)"
   else
-    die "missing $DEPLOY_DIR/.env.example; cannot seed $DEPLOY_ENV"
+    die "opencode not found. Not on PATH, not at default ($_default_oc), and OPENCODE_BIND_SOURCE in $DEPLOY_DIR/.env points to '$_custom_oc' which is not executable. Install opencode or fix $DEPLOY_DIR/.env."
   fi
+else
+  die "opencode not found on PATH and not at default location: $_default_oc. Install opencode first (see deploy/README.md §Prerequisites), or set OPENCODE_BIND_SOURCE in $DEPLOY_DIR/.env after first install."
 fi
-if ! grep -q '^OPENCODE_BIND_SOURCE=' "$DEPLOY_ENV" 2>/dev/null; then
-  if [ -n "${SUDO_USER:-}" ]; then
-    _user_home="$(getent passwd "$SUDO_USER" | cut -d: -f6 || true)"
-  else
-    _user_home="$HOME"
-  fi
-  _detected="${_user_home:-$HOME}/.opencode/bin/opencode"
-  printf '\nOPENCODE_BIND_SOURCE=%s\n' "$_detected" >> "$DEPLOY_ENV"
-  log "wrote OPENCODE_BIND_SOURCE=$_detected to $DEPLOY_ENV"
-fi
-# shellcheck disable=SC1090
-OPENCODE_BIND_SOURCE="$(. "$DEPLOY_ENV" && printf '%s' "${OPENCODE_BIND_SOURCE:-}")"
-if [ ! -x "$OPENCODE_BIND_SOURCE" ]; then
-  die "opencode not found at \$OPENCODE_BIND_SOURCE=$OPENCODE_BIND_SOURCE. Install opencode first, or set OPENCODE_BIND_SOURCE in $DEPLOY_ENV. See deploy/README.md §Prerequisites."
-fi
-log "opencode found at $OPENCODE_BIND_SOURCE"
+
+log "step 1/5: prerequisites OK"
+
+# ---------------------------------------------------------------------------
+# Step 2/5: Clone or update the repository (first host change)
+# ---------------------------------------------------------------------------
+log "step 2/5: cloning/updating repository at $REPO_DIR (branch: $BRANCH)"
 
 if [ ! -d "$REPO_DIR/.git" ]; then
-  log "cloning $REPO_URL -> $REPO_DIR (branch: $BRANCH)"
+  log "  no existing clone found; running: git clone --branch $BRANCH $REPO_URL $REPO_DIR"
   git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+  log "  cloned OK -> $REPO_DIR"
+else
+  log "  existing clone found at $REPO_DIR; will verify branch"
 fi
 
 cd "$REPO_DIR"
+log "  verifying working tree state"
 if ! git symbolic-ref --quiet --short HEAD >/dev/null; then
   die "$REPO_DIR is in detached HEAD; please 'git checkout $BRANCH' manually."
 fi
-if [ "$(git symbolic-ref --quiet --short HEAD)" != "$BRANCH" ]; then
-  log "switching working tree to branch $BRANCH"
+_current_branch="$(git symbolic-ref --quiet --short HEAD)"
+if [ "$_current_branch" != "$BRANCH" ]; then
+  log "  on branch '$_current_branch'; switching to '$BRANCH'"
   git checkout --quiet "$BRANCH"
+  log "  switched OK"
+else
+  log "  already on branch '$BRANCH'"
 fi
+log "step 2/5: repository ready at $REPO_DIR"
 
+# ---------------------------------------------------------------------------
+# Step 3/5: Seed deploy/.env
+# ---------------------------------------------------------------------------
+# deploy/.env.example lives in the repo (cloned in step 2), so this step
+# must run after the clone. The .env file holds OPENCODE_BIND_SOURCE
+# (the host path to the opencode binary, bind-mounted into the container
+# at runtime). The path comes from step 1d's resolution; we just record
+# it here if not already set.
+log "step 3/5: seeding deploy/.env"
+
+DEPLOY_ENV="$DEPLOY_DIR/.env"
+if [ ! -f "$DEPLOY_ENV" ]; then
+  if [ ! -f "$DEPLOY_DIR/.env.example" ]; then
+    die "missing $DEPLOY_DIR/.env.example; cannot seed $DEPLOY_ENV (repo at $REPO_DIR is incomplete?)"
+  fi
+  log "  seeding $DEPLOY_ENV from .env.example (m 0640)"
+  install -m 0640 -o root -g root \
+    "$DEPLOY_DIR/.env.example" "$DEPLOY_ENV"
+  log "  seeded OK"
+else
+  log "  $DEPLOY_ENV already exists; preserving"
+fi
+if ! grep -q '^OPENCODE_BIND_SOURCE=' "$DEPLOY_ENV" 2>/dev/null; then
+  printf '\nOPENCODE_BIND_SOURCE=%s\n' "$_oc_path" >> "$DEPLOY_ENV"
+  log "  wrote OPENCODE_BIND_SOURCE=$_oc_path to $DEPLOY_ENV (from step 1d resolution)"
+else
+  log "  OPENCODE_BIND_SOURCE already set in $DEPLOY_ENV; preserving"
+fi
+log "step 3/5: deploy/.env ready"
+
+# ---------------------------------------------------------------------------
+# Step 4/5: Seed /etc/symphony (symphony.env, WORKFLOW.md)
+# ---------------------------------------------------------------------------
+log "step 4/5: seeding $ETC_DIR"
+
+log "  ensuring $ETC_DIR exists (m 0750)"
 install -d -m 0750 -o root -g root "$ETC_DIR"
+
 if [ ! -f "$ETC_DIR/symphony.env" ]; then
-  log "seeding $ETC_DIR/symphony.env from template (you must edit it)"
+  log "  seeding $ETC_DIR/symphony.env from $DEPLOY_DIR/symphony-py.env.example (m 0640)"
   install -m 0640 -o root -g root \
     "$DEPLOY_DIR/symphony-py.env.example" "$ETC_DIR/symphony.env"
-fi
-if [ ! -f "$ETC_DIR/WORKFLOW.md" ]; then
-  if [ -f "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" ]; then
-    log "seeding $ETC_DIR/WORKFLOW.md from python/examples/"
-    install -m 0640 -o root -g root \
-      "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" "$ETC_DIR/WORKFLOW.md"
-  else
-    log "WARN: no WORKFLOW.md example found; create $ETC_DIR/WORKFLOW.md by hand"
-  fi
+  log "  seeded OK"
+else
+  log "  $ETC_DIR/symphony.env already exists; preserving"
 fi
 
-log "installing systemd units to /etc/systemd/system/"
+if [ ! -f "$ETC_DIR/WORKFLOW.md" ]; then
+  if [ -f "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" ]; then
+    log "  seeding $ETC_DIR/WORKFLOW.md from python/examples/ (m 0640)"
+    install -m 0640 -o root -g root \
+      "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" "$ETC_DIR/WORKFLOW.md"
+    log "  seeded OK"
+  else
+    log "  WARN: no WORKFLOW.md example found at $PYTHON_DIR/examples/WORKFLOW.github-opencode.md; create $ETC_DIR/WORKFLOW.md by hand"
+  fi
+else
+  log "  $ETC_DIR/WORKFLOW.md already exists; preserving"
+fi
+log "step 4/5: $ETC_DIR ready"
+
+# ---------------------------------------------------------------------------
+# Step 5/5: Install systemd units to /etc/systemd/system/
+# ---------------------------------------------------------------------------
+log "step 5/5: installing systemd units to /etc/systemd/system/"
+# Intentional v1.1+ behavior: unconditionally overwrite. Re-runs pick up
+# any service-file changes in the repo. See deploy/README.md "v1.1+" note.
+
+# 5a. Detect any pre-existing service so we can warn the user before
+# overwriting. We don't fail — overwriting is intentional — but the user
+# should know whether a running service is about to be replaced.
+if [ -f /etc/systemd/system/symphony-py.service ]; then
+  log "  found existing /etc/systemd/system/symphony-py.service (will be overwritten)"
+  if systemctl is-active --quiet symphony-py.service 2>/dev/null; then
+    log "  WARN: symphony-py.service is currently ACTIVE — running container is unaffected, but the next start uses the new unit"
+  fi
+  if systemctl is-enabled --quiet symphony-py.service 2>/dev/null; then
+    log "  INFO: symphony-py.service is currently ENABLED — it stays enabled across re-installs"
+  fi
+else
+  log "  no existing service at /etc/systemd/system/symphony-py.service (fresh install)"
+fi
+
+log "  installing symphony-py.service (m 0644)"
 install -m 0644 "$DEPLOY_DIR/symphony-py.service" \
                  /etc/systemd/system/symphony-py.service
+
+log "  installing symphony-py-pull.service (m 0644)"
 install -m 0644 "$DEPLOY_DIR/symphony-py-pull.service" \
                  /etc/systemd/system/symphony-py-pull.service
+
+log "  installing symphony-py.timer (m 0644)"
 install -m 0644 "$DEPLOY_DIR/symphony-py.timer" \
                  /etc/systemd/system/symphony-py.timer
-systemctl daemon-reload
+
+log "  reloading systemd daemon"
+if ! systemctl daemon-reload; then
+  die "systemctl daemon-reload failed; is systemd running?"
+fi
+log "  daemon-reload OK"
+log "step 5/5: systemd units installed"
 
 cat <<EOF
 

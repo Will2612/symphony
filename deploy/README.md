@@ -53,10 +53,10 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
 - **opencode (runner binary)** — the agent subprocess that the orchestrator spawns.
   Installed on the **host** and bind-mounted read-only into the container at
   `/usr/local/bin/opencode` (see `deploy/docker-compose.yml`). opencode is a **strict
-  prerequisite** — `install.sh` does NOT install it. The host path is configurable
-  via `OPENCODE_BIND_SOURCE` in `deploy/.env`; default is `~/.opencode/bin/opencode`.
-  If you have opencode elsewhere, edit `OPENCODE_BIND_SOURCE` in `deploy/.env` after
-  running `install.sh`.
+  prerequisite** — `install.sh` does NOT install it. The install script discovers
+  the host path in this order: (1) `command -v opencode` (opencode on `$PATH`),
+  (2) the conventional `~/.opencode/bin/opencode`, (3) `OPENCODE_BIND_SOURCE` in
+  `deploy/.env` (set this manually if opencode lives elsewhere).
   arm64 glibc binary is required (Pi 5 / Ubuntu 24.04 are glibc).
 
 Verify:
@@ -72,6 +72,24 @@ grep OPENCODE_BIND_SOURCE /opt/symphony/deploy/.env
 > **Not** using podman, containerd, or `docker-compose` (v1 standalone).
 > The systemd units invoke `docker compose` (the v2 plugin).
 
+### Multi-arch support
+
+Starting with the current build pipeline, the Symphony image is built for **both**
+`linux/arm64` and `linux/amd64` platforms. This means:
+
+- **Raspberry Pi 5 / arm64 hosts** — pulls the `linux/arm64` variant as before.
+- **Intel/AMD hosts** — can now pull the `linux/amd64` variant for local testing
+  or non-Pi deployment.
+
+The multi-arch build is configured in `.github/workflows/build-image.yml` via the
+`platforms` field (`linux/arm64,linux/amd64`). Docker's manifest list ensures that
+each host architecture automatically gets the correct variant on `docker pull`.
+
+```bash
+# Verify the image supports your architecture:
+docker buildx imagetools inspect ghcr.io/will2612/symphony:python_implementation_trial
+```
+
 ## Install
 
 Log in as root (or `sudo -i`):
@@ -81,13 +99,13 @@ curl -fsSL https://raw.githubusercontent.com/Will2612/symphony/python_implementa
   | sudo bash -s -- --repo https://github.com/Will2612/symphony
 ```
 
-This script:
-1. Clones the repo to `/opt/symphony` (reuses existing clone if present)
-2. Checks out `python_implementation_trial`
-3. Seeds `/etc/symphony/symphony.env` from the example
-4. Seeds `/etc/symphony/WORKFLOW.md` from `python/examples/`
-5. Installs the three systemd units (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`)
-6. Seeds `deploy/.env` and records `OPENCODE_BIND_SOURCE` (the host path to your opencode install). The script does NOT install opencode; opencode is a prerequisite. See `deploy/README.md §Prerequisites`.
+This script runs in 5 numbered steps, all logged to stdout (each step starts with a `step N/5: …` banner):
+
+1. **Prerequisites** (read-only, fail-fast before any host change): running as root, `docker` on PATH, the `docker compose` v2 plugin, and the `opencode` binary. If any of these fail, the script aborts before touching the host.
+2. **Clone or update the repository** at `/opt/symphony` (reuses an existing clone if present; switches the working tree to the target branch).
+3. **Seed `deploy/.env`** from `deploy/.env.example`, recording `OPENCODE_BIND_SOURCE` if unset (auto-detected from the invoking user's `~/.opencode/bin/opencode`; the user can override by editing `deploy/.env`).
+4. **Seed `/etc/symphony`** with `symphony.env` (from `deploy/symphony-py.env.example`) and `WORKFLOW.md` (from `python/examples/WORKFLOW.github-opencode.md`).
+5. **Install the three systemd units** (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`) to `/etc/systemd/system/`. If a prior service is already installed, the script logs a heads-up before overwriting; if it is active or enabled, it logs a `WARN` or `INFO` line. Finally runs `systemctl daemon-reload`.
 
 It does **not** start or enable any services.
 
@@ -221,14 +239,30 @@ docker rmi $(docker images 'ghcr.io/will2612/symphony*' -q)
 
 ## Known limitations
 
-- **No `arm64` image for Apple Silicon Macs** — the image only builds for
-  `linux/arm64`. Intel/AMD Pi hardware is also fine.
 - **No built-in HTTPS** — the orchestrator listens on plain HTTP. Put it behind
   a reverse proxy (Caddy, nginx) if you need TLS.
 - **Single-host only** — no clustering or multi-node orchestration in v1.
 - **Workspace on named volume** — workspaces are stored in Docker's named
   volume, not on the host filesystem. Bind-mount a host directory into the
   container if you need host access to workspace artifacts.
+
+### Verifying deploy changes
+
+Before committing changes to `deploy/`, run the local verification gate:
+
+```bash
+make -C deploy all
+```
+
+This runs two stages:
+
+1. **`verify`** — syntax-checks all shell scripts with `bash -n` and validates
+   the `docker-compose.yml` config with `docker compose config --quiet`.
+2. **`smoke`** — starts the orchestrator container once using stub credentials
+   (`verify.override.yml`) to confirm it boots and produces log output.
+
+The full `all` target runs both stages. Use `make -C deploy verify` for a quick
+syntax-only check, or `make -C deploy smoke` to run only the container boot test.
 
 ## Pi 5 Environment Checklist
 
