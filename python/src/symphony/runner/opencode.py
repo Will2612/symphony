@@ -61,6 +61,18 @@ _LOGGER = logging.getLogger(__name__)
 
 _LINE_BUFFER_BYTES = 10 * 1024 * 1024  # SPEC §10.1 mandatory 10 MB line buffer
 
+# Env var suffixes that the opencode subprocess must NOT inherit. The
+# log redactor's FORBIDDEN_LOG_FIELDS (observability/log.py) is narrower
+# ({api_key, password, secret, token}) because it only gates log output;
+# the env scrubber is broader because opencode would otherwise carry
+# credentials it has no need for into its own LLM/agent context.
+# `KEY` is included as a suffix because most deployment-time env vars
+# ending in KEY (MY_API_KEY, MONITORING_KEY, etc.) are credentials.
+# OPENCODE_API_KEY is explicitly re-added to the set of preserved vars
+# below because opencode needs it for LLM auth.
+_SCRUB_SUFFIXES: tuple[str, ...] = ("API_KEY", "TOKEN", "SECRET", "PASSWORD", "KEY")
+_SCRUB_PRESERVE: frozenset[str] = frozenset({"OPENCODE_API_KEY"})
+
 
 # ---------------------------------------------------------------------------
 # Forward declarations
@@ -170,17 +182,14 @@ class _SubprocessStdioServer:
 def _scrub_env() -> dict[str, str]:
     """Drop secret-leaking env vars before spawning opencode subprocess.
 
-    Drops: *API_KEY*, *TOKEN*, *SECRET*, *PASSWORD*, *KEY
-    except OPENCODE_API_KEY (opencode needs it for LLM auth).
-    GITHUB_TOKEN is the orchestrator's tracker PAT — opencode doesn't
-    need it, so it gets dropped.
+    See _SCRUB_SUFFIXES / _SCRUB_PRESERVE module-level constants for
+    the rationale on why the scrubber is broader than the log redactor
+    and why OPENCODE_API_KEY is exempt.
     """
-    SCRUB_SUFFIXES = ("API_KEY", "TOKEN", "SECRET", "PASSWORD", "KEY")
     scrub = {
         k for k in os.environ
-        if any(k.endswith(s) for s in SCRUB_SUFFIXES)
-    }
-    scrub.discard("OPENCODE_API_KEY")
+        if any(k.endswith(s) for s in _SCRUB_SUFFIXES)
+    } - _SCRUB_PRESERVE
     return {k: v for k, v in os.environ.items() if k not in scrub}
 
 

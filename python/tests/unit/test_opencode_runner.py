@@ -818,18 +818,18 @@ def test_opencode_runner_emits_approval_auto_approved(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_scrub_env_drops_credentials_only() -> None:
+def test_scrub_env_drops_credentials_only(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify _scrub_env drops secret-leaking vars but preserves opencode-needed ones."""
-    import os
-
-    # Set up test env with mix of secret and non-secret vars
-    os.environ["GITHUB_TOKEN"] = "x"
-    os.environ["OPENCODE_API_KEY"] = "y"
-    os.environ["MY_API_KEY"] = "z"
-    os.environ["HOME"] = "/h"
-    os.environ["PATH"] = "/p"
-    os.environ["XDG_CONFIG_HOME"] = "/x"
-    os.environ["GIT_DIR"] = "/g"
+    # Use monkeypatch so the test doesn't leak env mutations into the
+    # rest of the test session (or other tests in the same worker
+    # under pytest-xdist).
+    monkeypatch.setenv("GITHUB_TOKEN", "x")
+    monkeypatch.setenv("OPENCODE_API_KEY", "y")
+    monkeypatch.setenv("MY_API_KEY", "z")
+    monkeypatch.setenv("HOME", "/h")
+    monkeypatch.setenv("PATH", "/p")
+    monkeypatch.setenv("XDG_CONFIG_HOME", "/x")
+    monkeypatch.setenv("GIT_DIR", "/g")
 
     scrubbed = _scrub_env()
 
