@@ -37,7 +37,7 @@ from symphony.runner.base import (
     RunnerResult,
     RunOutcome,
 )
-from symphony.runner.opencode import OpenCodeRunner, _classify_event
+from symphony.runner.opencode import OpenCodeRunner, _classify_event, _scrub_env
 from symphony.workspace.manager import Workspace
 
 # ---------------------------------------------------------------------------
@@ -811,3 +811,38 @@ def test_opencode_runner_emits_approval_auto_approved(tmp_path: Path) -> None:
     result = asyncio.run(runner.run(workspace=ws, prompt="hi", event_callback=cb, cancel=cancel))
     assert result.status == RunOutcome.SUCCEEDED
     assert EventKind.APPROVAL_AUTO_APPROVED in [e.event for e in captured]
+
+
+# ---------------------------------------------------------------------------
+# _scrub_env: credential scrubbing
+# ---------------------------------------------------------------------------
+
+
+def test_scrub_env_drops_credentials_only() -> None:
+    """Verify _scrub_env drops secret-leaking vars but preserves opencode-needed ones."""
+    import os
+
+    # Set up test env with mix of secret and non-secret vars
+    os.environ["GITHUB_TOKEN"] = "x"
+    os.environ["OPENCODE_API_KEY"] = "y"
+    os.environ["MY_API_KEY"] = "z"
+    os.environ["HOME"] = "/h"
+    os.environ["PATH"] = "/p"
+    os.environ["XDG_CONFIG_HOME"] = "/x"
+    os.environ["GIT_DIR"] = "/g"
+
+    scrubbed = _scrub_env()
+
+    # Should be dropped (secret-leaking)
+    assert "GITHUB_TOKEN" not in scrubbed, "GITHUB_TOKEN (orchestrator PAT) should be dropped"
+    assert "MY_API_KEY" not in scrubbed, "MY_API_KEY should be dropped"
+
+    # Should be preserved (opencode needs OPENCODE_API_KEY for LLM auth)
+    assert "OPENCODE_API_KEY" in scrubbed, "OPENCODE_API_KEY must be preserved for opencode LLM auth"
+    assert scrubbed["OPENCODE_API_KEY"] == "y"
+
+    # Should be preserved (non-secret)
+    assert "HOME" in scrubbed, "HOME should be preserved"
+    assert "PATH" in scrubbed, "PATH should be preserved"
+    assert "XDG_CONFIG_HOME" in scrubbed, "XDG_CONFIG_HOME should be preserved"
+    assert "GIT_DIR" in scrubbed, "GIT_DIR should be preserved"
