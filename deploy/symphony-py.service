@@ -22,6 +22,11 @@ SyslogIdentifier=symphony-py
 # Restart on crash so the container stays alive across reboots.
 Restart=always
 RestartSec=10
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/symphony /etc/symphony
+StartLimitBurst=3
+StartLimitIntervalSec=300
 
 [Install]
 WantedBy=multi-user.target
