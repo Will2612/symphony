@@ -129,7 +129,7 @@ else
   log "  $DEPLOY_ENV already exists; preserving"
 fi
 if ! grep -q '^OPENCODE_BIND_SOURCE=' "$DEPLOY_ENV" 2>/dev/null; then
-  printf '\nOPENCODE_BIND_SOURCE=%s\n' "$_oc_path" >> "$DEPLOY_ENV"
+  printf '\nOPENCODE_BIND_SOURCE=%s\n' "${_oc_path/#\~/$HOME}" >> "$DEPLOY_ENV"
   log "  wrote OPENCODE_BIND_SOURCE=$_oc_path to $DEPLOY_ENV (from step 1d resolution)"
 else
   log "  OPENCODE_BIND_SOURCE already set in $DEPLOY_ENV; preserving"
@@ -200,6 +200,9 @@ install -m 0644 "$DEPLOY_DIR/symphony-py-pull.service" \
 log "  installing symphony-py.timer (m 0644)"
 install -m 0644 "$DEPLOY_DIR/symphony-py.timer" \
                  /etc/systemd/system/symphony-py.timer
+
+log "  creating lock directory"
+install -d -m 0755 -o root -g root /opt/symphony/.lock
 
 log "  reloading systemd daemon"
 if ! systemctl daemon-reload; then
