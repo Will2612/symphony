@@ -6,6 +6,10 @@
 # Safe to run by hand: sudo /opt/symphony/deploy/pull-and-restart.sh
 set -euo pipefail
 
+LOCK_FILE="/opt/symphony/.lock/symphony-pull-lock"
+mkdir -p "$(dirname "$LOCK_FILE")"
+( flock -n 200 || { log "another pull in progress; exiting"; exit 0; } ) 200>"$LOCK_FILE"
+
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/symphony}"
 SERVICE_NAME="${SERVICE_NAME:-symphony}"
 
