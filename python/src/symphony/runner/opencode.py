@@ -167,6 +167,23 @@ class _SubprocessStdioServer:
 # ---------------------------------------------------------------------------
 
 
+def _scrub_env() -> dict[str, str]:
+    """Drop secret-leaking env vars before spawning opencode subprocess.
+
+    Drops: *API_KEY*, *TOKEN*, *SECRET*, *PASSWORD*, *KEY
+    except OPENCODE_API_KEY (opencode needs it for LLM auth).
+    GITHUB_TOKEN is the orchestrator's tracker PAT — opencode doesn't
+    need it, so it gets dropped.
+    """
+    SCRUB_SUFFIXES = ("API_KEY", "TOKEN", "SECRET", "PASSWORD", "KEY")
+    scrub = {
+        k for k in os.environ
+        if any(k.endswith(s) for s in SCRUB_SUFFIXES)
+    }
+    scrub.discard("OPENCODE_API_KEY")
+    return {k: v for k, v in os.environ.items() if k not in scrub}
+
+
 @dataclass
 class OpenCodeRunner:
     """Async runner that drives `opencode acp` and emits RunnerEvents."""
@@ -208,7 +225,7 @@ class OpenCodeRunner:
         pid: int | None = None
 
         try:
-            env = os.environ.copy()
+            env = _scrub_env()
             await server.start(cwd=ws_path, env=env)
             pid = _safe_pid(server)
 
