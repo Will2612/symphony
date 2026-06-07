@@ -4,8 +4,13 @@
 
 services:
   symphony:
-    image: ghcr.io/will2612/symphony:python_implementation_trial
+    image: ghcr.io/will2612/symphony:python_implementation_trial@sha256:REPLACEME
     container_name: symphony
+    init: true
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     restart: unless-stopped
     env_file:
       - /etc/symphony/symphony.env
@@ -19,12 +24,24 @@ services:
       - --i-understand-that-this-will-be-running-without-the-usual-guardrails
     security_opt:
       - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+          pids: 512
+        reservations:
+          memory: 512M
     # Uncomment to expose the observability HTTP server.
     # ports:
     #   - "127.0.0.1:7842:7842"
     # /tmp as tmpfs (image runs as non-root; only /tmp needs scratch).
-    tmpfs:
-      - /tmp
+    tmpfs: [/tmp:size=1g]
 
 volumes:
   symphony-workspaces:
