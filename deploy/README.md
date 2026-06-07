@@ -40,7 +40,7 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
 
 - Raspberry Pi 5 (or any `linux/arm64` host)
 - Ubuntu 24.04 LTS Server or Raspberry Pi OS (64-bit)
-- 4 GB RAM minimum, 8 GB recommended
+- 16 GB RAM recommended (8 GB minimum)
 - 32 GB SD card or SSD
 
 ### Software
@@ -217,6 +217,17 @@ docker tag ghcr.io/will2612/symphony:python_implementation_trial \
 docker compose up -d --force-recreate
 ```
 
+## Troubleshooting
+
+### Service stopped auto-restarting
+
+After 3 rapid crashes within 5 minutes, systemd stops auto-restarting the
+container. To re-enable:
+```bash
+sudo systemctl reset-failed symphony-py.service
+sudo systemctl start symphony-py.service
+```
+
 ## Uninstall
 
 ```bash
@@ -270,8 +281,8 @@ Run these on the Pi before installing. Fix any missing items before proceeding.
 
 ### Hardware & OS
 - [ ] `uname -m` → `aarch64` (Pi 5 is arm64; image is linux/arm64 only)
-- [ ] `df -h /` — ≥ 32 GB available on root or a dedicated SSD/SD
-- [ ] `free -h` — ≥ 4 GB RAM (8 GB recommended)
+- [ ] `df -h /` — ≥ 64 GB SSD/NVMe (256 GB recommended)
+- [ ] `free -h` — ≥ 8 GB RAM (16 GB recommended)
 
 ### Core Software (all on host)
 - [ ] `docker --version` — Docker Engine 24+ required
