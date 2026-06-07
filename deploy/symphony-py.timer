@@ -1,5 +1,5 @@
 [Unit]
-Description=Poll origin/main every 1 minute and redeploy Symphony
+Description=Pull latest GHCR image and redeploy Symphony every 1 minute
 
 [Timer]
 # First run 30s after boot, then every minute on the minute-ish.
