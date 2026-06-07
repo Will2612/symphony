@@ -19,7 +19,7 @@ TimeoutStartSec=300
 # the repo + venv. ReadWritePaths is the carve-out from ProtectSystem=strict.
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/symphony /etc/symphony
+ReadWritePaths=/opt/symphony /opt/symphony/.lock /etc/symphony
 
 StandardOutput=journal
 StandardError=journal
