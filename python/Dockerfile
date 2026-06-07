@@ -21,17 +21,14 @@ WORKDIR /app
 COPY . /app
 
 # Install runtime deps + the package itself. --no-cache-dir keeps the
-# layer small; the find+rm at the end strips any stray __pycache__ that
-# pip install might have created in the source tree.
-RUN pip install --no-cache-dir . \
-    && find /app -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+# layer small; --no-compile avoids bytecode generation entirely.
+RUN pip install --no-cache-dir --no-compile .
 
 # Workspace mount point. The named volume on the host supplies the actual dir.
 RUN mkdir -p /var/lib/symphony/workspaces \
     && chown -R symphony:symphony /var/lib/symphony
 
 USER symphony:symphony
-WORKDIR /app
 
 # CLI signature per python/README.md:
 #   symphony [--port N] <WORKFLOW.md> --i-understand-that-this-will-be-running-without-the-usual-guardrails
