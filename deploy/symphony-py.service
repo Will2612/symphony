@@ -22,9 +22,12 @@ SyslogIdentifier=symphony-py
 # Restart on crash so the container stays alive across reboots.
 Restart=always
 RestartSec=10
+# ProtectSystem=strict makes the entire filesystem read-only. Any
+# path the service needs to write to must be carved out via
+# ReadWritePaths= (the pull service does this; the orchestrator
+# service does not need to write anywhere).
 ProtectSystem=strict
 ProtectHome=true
-ReadOnlyPaths=/opt/symphony /etc/symphony
 StartLimitBurst=3
 StartLimitIntervalSec=300
 
