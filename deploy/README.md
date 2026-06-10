@@ -23,7 +23,7 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
                                                                v
                                                 +-----------------------------+
                                                 |  docker compose up          |
-                                                |  /opt/symphony              |
+                                                |  ~/.symphony              |
                                                 |  (named volume: workspaces)|
                                                 +--------------+--------------+
                                                                |
@@ -65,7 +65,7 @@ docker compose version
 # Docker Compose version v2.24+
 ```
 ```bash
-grep OPENCODE_BIND_SOURCE /opt/symphony/deploy/.env
+grep OPENCODE_BIND_SOURCE ~/.symphony/deploy/.env
 # OPENCODE_BIND_SOURCE=~/.opencode/bin/opencode
 ```
 
@@ -102,9 +102,9 @@ curl -fsSL https://raw.githubusercontent.com/Will2612/symphony/python_implementa
 This script runs in 5 numbered steps, all logged to stdout (each step starts with a `step N/5: …` banner):
 
 1. **Prerequisites** (read-only, fail-fast before any host change): running as root, `docker` on PATH, the `docker compose` v2 plugin, and the `opencode` binary. If any of these fail, the script aborts before touching the host.
-2. **Clone or update the repository** at `/opt/symphony` (reuses an existing clone if present; switches the working tree to the target branch).
+2. **Clone or update the repository** at `~/.symphony` (reuses an existing clone if present; switches the working tree to the target branch).
 3. **Seed `deploy/.env`** from `deploy/.env.example`, recording `OPENCODE_BIND_SOURCE` if unset (auto-detected from the invoking user's `~/.opencode/bin/opencode`; the user can override by editing `deploy/.env`).
-4. **Seed `/etc/symphony`** with `symphony.env` (from `deploy/symphony-py.env.example`) and `WORKFLOW.md` (from `python/examples/WORKFLOW.github-opencode.md`).
+4. **Seed `~/.config/symphony`** with `symphony.env` (from `deploy/symphony-py.env.example`) and `WORKFLOW.md` (from `python/examples/WORKFLOW.github-opencode.md`).
 5. **Install the three systemd units** (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`) to `/etc/systemd/system/`. If a prior service is already installed, the script logs a heads-up before overwriting; if it is active or enabled, it logs a `WARN` or `INFO` line. Finally runs `systemctl daemon-reload`.
 
 It does **not** start or enable any services.
@@ -113,7 +113,7 @@ It does **not** start or enable any services.
 
 Edit two files on the Pi:
 
-### 1. `/etc/symphony/symphony.env`
+### 1. `~/.config/symphony/symphony.env`
 
 ```bash
 # GitHub fine-grained PAT. Needs repo read+write.
@@ -124,9 +124,9 @@ GITHUB_TOKEN=ghp_...
 OPENCODE_API_KEY=sk_...
 ```
 
-`chmod 640 /etc/symphony/symphony.env` after editing.
+`chmod 640 ~/.config/symphony/symphony.env` after editing.
 
-### 2. `/etc/symphony/WORKFLOW.md`
+### 2. `~/.config/symphony/WORKFLOW.md`
 
 Point the tracker at your repo. Key fields:
 
@@ -137,7 +137,7 @@ tracker:
     project_slug: Will2612/symphony   # your repo
 ```
 
-`chmod 640 /etc/symphony/WORKFLOW.md`.
+`chmod 640 ~/.config/symphony/WORKFLOW.md`.
 
 ## Pre-pull the image
 
@@ -145,13 +145,13 @@ Before running the orchestrator for the first time, pull the image so you can
 verify it works without waiting for a pull on first start:
 
 ```bash
-cd /opt/symphony && docker compose pull
+cd ~/.symphony && docker compose pull
 ```
 
 ## Foreground test (recommended first run)
 
 ```bash
-cd /opt/symphony && docker compose up
+cd ~/.symphony/deploy && docker compose up
 ```
 
 You should see the Symphony banner and tracker polling output. Press **Ctrl-C**
@@ -179,7 +179,7 @@ sudo journalctl -u symphony-py.service -f
 sudo journalctl -u symphony-py-pull.service -f
 
 # Container stdout/stderr
-docker compose -f /opt/symphony/deploy/docker-compose.yml logs -f
+docker compose -f ~/.symphony/deploy/docker-compose.yml logs -f
 ```
 
 ## Update (new image on GHCR)
@@ -189,7 +189,7 @@ image. The timer fires every minute and calls `pull-and-restart.sh`:
 
 ```bash
 # Or trigger manually:
-sudo /opt/symphony/deploy/pull-and-restart.sh
+sudo ~/.symphony/deploy/pull-and-restart.sh
 ```
 
 ## Update branch / image tag
@@ -197,7 +197,7 @@ sudo /opt/symphony/deploy/pull-and-restart.sh
 To pin to a specific SHA or a different branch:
 
 ```bash
-cd /opt/symphony
+cd ~/.symphony
 git fetch origin
 git checkout python_implementation_trial   # or a specific SHA
 docker compose pull
@@ -239,10 +239,10 @@ sudo rm /etc/systemd/system/symphony-py*.service /etc/systemd/system/symphony-py
 sudo systemctl daemon-reload
 
 # Remove repo (optional)
-rm -rf /opt/symphony
+rm -rf ~/.symphony
 
 # Remove config (optional)
-rm -rf /etc/symphony
+rm -rf ~/.config/symphony
 
 # Remove images (optional)
 docker rmi $(docker images 'ghcr.io/will2612/symphony*' -q)
@@ -299,10 +299,10 @@ Run these on the Pi before installing. Fix any missing items before proceeding.
 - [ ] Or: `OPENCODE_BIND_SOURCE` set in `deploy/.env` if opencode is installed elsewhere
 
 ### Configuration Files
-- [ ] `/etc/symphony/symphony.env` exists — `chmod 640`, owned `root:root`
+- [ ] `~/.config/symphony/symphony.env` exists — `chmod 640`, owned `root:root`
   - [ ] `GITHUB_TOKEN` is set (fine-grained PAT with repo read+write)
   - [ ] `OPENCODE_API_KEY` is set (if your runner needs one)
-- [ ] `/etc/symphony/WORKFLOW.md` exists — `chmod 640`
+- [ ] `~/.config/symphony/WORKFLOW.md` exists — `chmod 640`
   - [ ] `tracker.project_slug` points to your repo (e.g. `Will2612/symphony`)
   - [ ] `workspace.root` is set and non-empty
 
@@ -319,10 +319,10 @@ Run these on the Pi before installing. Fix any missing items before proceeding.
 ### First-run Verification
 ```bash
 # Pull the image (run once before enabling the service)
-cd /opt/symphony && docker compose pull
+cd ~/.symphony && docker compose pull
 
 # Foreground test — should see the Symphony banner and tracker polling
-cd /opt/symphony && docker compose up
+cd ~/.symphony && docker compose up
 
 # Enable the service (after confirming the foreground test works)
 sudo systemctl enable --now symphony-py.service
@@ -334,14 +334,14 @@ sudo journalctl -u symphony-py.service -f
 ### ⚠️ `symphony-py.service` was rewritten (v1.1+)
 
 The service file shipped before v1.1 called the Python venv directly
-(`ExecStart=/opt/symphony/python/.venv/bin/symphony …`) and ran as a
+(`ExecStart=~/.symphony/python/.venv/bin/symphony …`) and ran as a
 non-root `symphony` user. That version is broken — `install.sh` does not
 create that user or the venv.
 
 If you are upgrading from an older install, re-run:
 ```bash
 sudo systemctl disable --now symphony-py.service
-sudo install -m 0644 /opt/symphony/deploy/symphony-py.service \
+sudo install -m 0644 ~/.symphony/deploy/symphony-py.service \
                /etc/systemd/system/symphony-py.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now symphony-py.service

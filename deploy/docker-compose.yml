@@ -4,7 +4,7 @@
 
 services:
   symphony:
-    image: ghcr.io/will2612/symphony:python_implementation_trial@sha256:REPLACEME
+    image: ghcr.io/will2612/symphony:python_implementation_trial
     container_name: symphony
     init: true
     ulimits:
