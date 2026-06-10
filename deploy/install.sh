@@ -13,7 +13,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # All path defaults are computed up front so every later step can log its
 # target paths in advance.
-REPO_DIR="${REPO_DIR:-/opt/symphony}"
+REPO_DIR="${REPO_DIR:-~/.symphony}"
 BRANCH="${BRANCH:-python_implementation_trial}"
 if [ -d "$REPO_DIR/.git" ]; then
   REPO_URL="${REPO_URL:-$(git -C "$REPO_DIR" remote get-url origin)}"
@@ -21,7 +21,7 @@ else
   REPO_URL="${REPO_URL:-https://github.com/Will2612/symphony.git}"
 fi
 PYTHON_DIR="${PYTHON_DIR:-${REPO_DIR}/python}"
-ETC_DIR="${ETC_DIR:-/etc/symphony}"
+ETC_DIR="${ETC_DIR:-~/.config/symphony}"
 DEPLOY_DIR="${REPO_DIR}/deploy"
 
 log() { printf '[install] %s\n' "$*"; sync; }
@@ -137,7 +137,7 @@ fi
 log "step 3/5: deploy/.env ready"
 
 # ---------------------------------------------------------------------------
-# Step 4/5: Seed /etc/symphony (symphony.env, WORKFLOW.md)
+# Step 4/5: Seed ~/.config/symphony (symphony.env, WORKFLOW.md)
 # ---------------------------------------------------------------------------
 log "step 4/5: seeding $ETC_DIR"
 
@@ -202,7 +202,7 @@ install -m 0644 "$DEPLOY_DIR/symphony-py.timer" \
                  /etc/systemd/system/symphony-py.timer
 
 log "  creating lock directory"
-install -d -m 0755 -o root -g root /opt/symphony/.lock
+install -d -m 0755 -o root -g root ~/.symphony/.lock
 
 log "  reloading systemd daemon"
 if ! systemctl daemon-reload; then
