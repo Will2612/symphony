@@ -18,7 +18,7 @@ BRANCH="${BRANCH:-python_implementation_trial}"
 if [ -d "$REPO_DIR/.git" ]; then
   REPO_URL="${REPO_URL:-$(git -C "$REPO_DIR" remote get-url origin)}"
 else
-  REPO_URL="${REPO_URL:-https://github.com/openai/symphony.git}"
+  REPO_URL="${REPO_URL:-https://github.com/Will2612/symphony.git}"
 fi
 PYTHON_DIR="${PYTHON_DIR:-${REPO_DIR}/python}"
 ETC_DIR="${ETC_DIR:-/etc/symphony}"
