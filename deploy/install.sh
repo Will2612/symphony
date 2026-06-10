@@ -13,7 +13,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # All path defaults are computed up front so every later step can log its
 # target paths in advance.
-REPO_DIR="${REPO_DIR:-~/.symphony}"
+REPO_DIR="${REPO_DIR:-.symphony}"
 BRANCH="${BRANCH:-python_implementation_trial}"
 if [ -d "$REPO_DIR/.git" ]; then
   REPO_URL="${REPO_URL:-$(git -C "$REPO_DIR" remote get-url origin)}"
