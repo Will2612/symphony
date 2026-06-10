@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-shot installer for Symphony (Docker-based) on Ubuntu / Pi 5.
-# Run as root: sudo /opt/symphony/deploy/install.sh
+# Run ~/.symphony/deploy/install.sh
 #
 # Idempotent. Skips steps that are already done.
 # Prerequisite: Docker Engine 24+ and the docker compose v2 plugin.
@@ -117,7 +117,7 @@ if [ ! -f "$DEPLOY_ENV" ]; then
     die "missing $DEPLOY_DIR/.env.example; cannot seed $DEPLOY_ENV (repo at $REPO_DIR is incomplete?)"
   fi
   log "  seeding $DEPLOY_ENV from .env.example (m 0640)"
-  install -m 0640 -o root -g root \
+  install -m 0640 \
     "$DEPLOY_DIR/.env.example" "$DEPLOY_ENV"
   log "  seeded OK"
 else
@@ -137,11 +137,11 @@ log "step 3/5: deploy/.env ready"
 log "step 4/5: seeding $ETC_DIR"
 
 log "  ensuring $ETC_DIR exists (m 0750)"
-install -d -m 0750 -o root -g root "$ETC_DIR"
+install -d -m 0750  "$ETC_DIR"
 
 if [ ! -f "$ETC_DIR/symphony.env" ]; then
   log "  seeding $ETC_DIR/symphony.env from $DEPLOY_DIR/symphony-py.env.example (m 0640)"
-  install -m 0640 -o root -g root \
+  install -m 0640 \
     "$DEPLOY_DIR/symphony-py.env.example" "$ETC_DIR/symphony.env"
   log "  seeded OK"
 else
@@ -151,7 +151,7 @@ fi
 if [ ! -f "$ETC_DIR/WORKFLOW.md" ]; then
   if [ -f "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" ]; then
     log "  seeding $ETC_DIR/WORKFLOW.md from python/examples/ (m 0640)"
-    install -m 0640 -o root -g root \
+    install -m 0640 \
       "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" "$ETC_DIR/WORKFLOW.md"
     log "  seeded OK"
   else
@@ -197,7 +197,7 @@ install -m 0644 "$DEPLOY_DIR/symphony-py.timer" \
                  /etc/systemd/system/symphony-py.timer
 
 log "  creating lock directory"
-install -d -m 0755 -o root -g root ~/.symphony/.lock
+install -d -m 0755 ~/.symphony/.lock
 
 log "  reloading systemd daemon"
 if ! systemctl daemon-reload; then
