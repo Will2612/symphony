@@ -35,11 +35,6 @@ die() { err "$*"; exit 1; }
 # systemd, or git. If any of them fail, the script aborts cleanly.
 log "step 1/5: checking prerequisites"
 
-# 1a. Must run as root: we install systemd units and write to /etc, /opt.
-log "  checking running as root"
-[ "$(id -u)" -eq 0 ] || die "must run as root (use sudo)"
-log "    OK (uid=0)"
-
 # 1b. Docker Engine is required to run the orchestrator container.
 log "  checking docker on PATH"
 command -v docker >/dev/null 2>&1 \
