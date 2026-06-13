@@ -1,6 +1,18 @@
 # docker-compose.yml for Symphony on a single host.
 # Use:  docker compose pull && docker compose up -d
 # Override image tag or service args by editing the service definition below.
+#
+# This file uses two variables that must be set in the environment
+# (or in deploy/.env, which Docker Compose auto-loads):
+#   CONFIG_DIR           — host directory containing symphony.env + WORKFLOW.md
+#                          (default install location: ~/.config/symphony)
+#   OPENCODE_BIND_SOURCE — host path to the opencode binary, bind-mounted
+#                          into the container. install.sh auto-detects and
+#                          writes this to deploy/.env.
+#
+# Both variables must be ABSOLUTE paths — neither systemd nor docker
+# compose expand a leading `~`. install.sh resolves any `~/...` defaults
+# to the user's $HOME before writing them to deploy/.env.
 
 services:
   symphony:
@@ -13,9 +25,9 @@ services:
         hard: 65536
     restart: unless-stopped
     env_file:
-      - /etc/symphony/symphony.env
+      - ${CONFIG_DIR}/symphony.env
     volumes:
-      - /etc/symphony/WORKFLOW.md:/etc/symphony/WORKFLOW.md:ro
+      - ${CONFIG_DIR}/WORKFLOW.md:/etc/symphony/WORKFLOW.md:ro
       # host source: read from deploy/.env; see install.sh for auto-detection
       - ${OPENCODE_BIND_SOURCE}:/usr/local/bin/opencode:ro
       - symphony-workspaces:/var/lib/symphony/workspaces
