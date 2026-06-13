@@ -15,6 +15,13 @@ OVERRIDE_FILE="$SCRIPT_DIR/verify.override.yml"
 WORKFLOW_FILE="$SCRIPT_DIR/verify.workflow.md"
 ENV_FILE="$SCRIPT_DIR/.env"
 
+# Defaults for the variables referenced by docker-compose.yml. The Makefile
+# exports both; this fallback lets verify.sh also run by hand.
+: "${CONFIG_DIR:=$(getent passwd "$(id -u)" | cut -d: -f6)/.config/symphony}"
+: "${OPENCODE_BIND_SOURCE:=$(getent passwd "$(id -u)" | cut -d: -f6)/.opencode/bin/opencode}"
+export CONFIG_DIR
+export OPENCODE_BIND_SOURCE
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
