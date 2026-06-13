@@ -13,7 +13,13 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # All path defaults are computed up front so every later step can log its
 # target paths in advance.
-REPO_DIR="${REPO_DIR:-.symphony}"
+#
+# Path overrides (all optional):
+#   REPO_DIR    — where the Symphony clone lives (default: ~/.symphony)
+#   CONFIG_DIR  — where symphony.env + WORKFLOW.md live (default: ~/.config/symphony)
+#   BRANCH      — git branch to check out (default: python_implementation_trial)
+#   REPO_URL    — git URL to clone (default: github.com/Will2612/symphony.git)
+REPO_DIR="${REPO_DIR:-$HOME/.symphony}"
 BRANCH="${BRANCH:-python_implementation_trial}"
 if [ -d "$REPO_DIR/.git" ]; then
   REPO_URL="${REPO_URL:-$(git -C "$REPO_DIR" remote get-url origin)}"
@@ -21,12 +27,26 @@ else
   REPO_URL="${REPO_URL:-https://github.com/Will2612/symphony.git}"
 fi
 PYTHON_DIR="${PYTHON_DIR:-${REPO_DIR}/python}"
-ETC_DIR="${ETC_DIR:-~/.config/symphony}"
+CONFIG_DIR="${CONFIG_DIR:-$HOME/.config/symphony}"
 DEPLOY_DIR="${REPO_DIR}/deploy"
+
+# Resolve a leading tilde on REPO_DIR / CONFIG_DIR to $HOME now, so
+# every downstream consumer (env_file writes, systemd unit rendering,
+# the summary block) sees absolute paths. systemd and `docker compose`
+# do not expand `~`, so leaving a tilde in the path would silently
+# break the install.
+REPO_DIR="${REPO_DIR/#\~/$HOME}"
+CONFIG_DIR="${CONFIG_DIR/#\~/$HOME}"
+DEPLOY_DIR="${REPO_DIR}/deploy"
+PYTHON_DIR="${REPO_DIR}/python"
 
 log() { printf '[install] %s\n' "$*"; sync; }
 err() { log "ERROR: $*" >&2; }
 die() { err "$*"; exit 1; }
+
+# Shared helpers (render_template, update_env_var). See deploy/lib/render.sh.
+# shellcheck source=lib/render.sh
+. "$(dirname "$0")/lib/render.sh"
 
 # ---------------------------------------------------------------------------
 # Step 1/5: Prerequisite checks (MUST pass before any host change)
@@ -34,6 +54,12 @@ die() { err "$*"; exit 1; }
 # These checks are read-only and run before we touch the filesystem,
 # systemd, or git. If any of them fail, the script aborts cleanly.
 log "step 1/5: checking prerequisites"
+
+# 1a. envsubst is required to render deploy/*.in templates.
+log "  checking envsubst on PATH"
+command -v envsubst >/dev/null 2>&1 \
+  || die "envsubst not on PATH. Install gettext-base (Debian/Ubuntu: apt install gettext-base)."
+log "    OK ($(command -v envsubst))"
 
 # 1b. Docker Engine is required to run the orchestrator container.
 log "  checking docker on PATH"
@@ -63,7 +89,7 @@ elif [ -f "$DEPLOY_DIR/.env" ]; then
   _custom_oc="$(. "$DEPLOY_DIR/.env" && printf '%s' "${OPENCODE_BIND_SOURCE:-}")"
   if [ -n "$_custom_oc" ] && [ -x "$_custom_oc" ]; then
     _oc_path="$_custom_oc"
-    log "    OK (custom from $DEPLOY_DIR/.env: $_oc_path)"
+    log "    OK (custom from $DEPLOY_DIR/.env: $_custom_oc)"
   else
     die "opencode not found. Not on PATH, not at default ($_default_oc), and OPENCODE_BIND_SOURCE in $DEPLOY_DIR/.env points to '$_custom_oc' which is not executable. Install opencode or fix $DEPLOY_DIR/.env."
   fi
@@ -105,10 +131,10 @@ log "step 2/5: repository ready at $REPO_DIR"
 # Step 3/5: Seed deploy/.env
 # ---------------------------------------------------------------------------
 # deploy/.env.example lives in the repo (cloned in step 2), so this step
-# must run after the clone. The .env file holds OPENCODE_BIND_SOURCE
-# (the host path to the opencode binary, bind-mounted into the container
-# at runtime). The path comes from step 1d's resolution; we just record
-# it here if not already set.
+# must run after the clone. The .env file holds CONFIG_DIR and
+# OPENCODE_BIND_SOURCE, both of which docker-compose.yml interpolates
+# at runtime. OPENCODE_BIND_SOURCE comes from step 1d's resolution; we
+# record it here if not already set.
 log "step 3/5: seeding deploy/.env"
 
 DEPLOY_ENV="$DEPLOY_DIR/.env"
@@ -123,51 +149,70 @@ if [ ! -f "$DEPLOY_ENV" ]; then
 else
   log "  $DEPLOY_ENV already exists; preserving"
 fi
-if ! grep -q '^OPENCODE_BIND_SOURCE=' "$DEPLOY_ENV" 2>/dev/null; then
-  printf '\nOPENCODE_BIND_SOURCE=%s\n' "${_oc_path/#\~/$HOME}" >> "$DEPLOY_ENV"
-  log "  wrote OPENCODE_BIND_SOURCE=$_oc_path to $DEPLOY_ENV (from step 1d resolution)"
-else
-  log "  OPENCODE_BIND_SOURCE already set in $DEPLOY_ENV; preserving"
-fi
+# Always reconcile the two vars we depend on, even on a re-install. The
+# template ships with commented-out defaults; we want the resolved values
+# to be present and uncommented. update_env_var (from lib/render.sh) also
+# tilde-expands the value, so a `~/...` default in deploy/.env becomes
+# the user's absolute home.
+log "  writing CONFIG_DIR=$CONFIG_DIR to $DEPLOY_ENV"
+update_env_var "$DEPLOY_ENV" CONFIG_DIR "$CONFIG_DIR"
+log "  writing OPENCODE_BIND_SOURCE=$_oc_path to $DEPLOY_ENV (from step 1d resolution)"
+update_env_var "$DEPLOY_ENV" OPENCODE_BIND_SOURCE "$_oc_path"
 log "step 3/5: deploy/.env ready"
 
 # ---------------------------------------------------------------------------
-# Step 4/5: Seed ~/.config/symphony (symphony.env, WORKFLOW.md)
+# Step 4/5: Seed $CONFIG_DIR (symphony.env, WORKFLOW.md)
 # ---------------------------------------------------------------------------
-log "step 4/5: seeding $ETC_DIR"
+log "step 4/5: seeding $CONFIG_DIR"
 
-log "  ensuring $ETC_DIR exists (m 0750)"
-install -d -m 0750  "$ETC_DIR"
+log "  ensuring $CONFIG_DIR exists (m 0750)"
+install -d -m 0750  "$CONFIG_DIR"
 
-if [ ! -f "$ETC_DIR/symphony.env" ]; then
-  log "  seeding $ETC_DIR/symphony.env from $DEPLOY_DIR/symphony-py.env.example (m 0640)"
+if [ ! -f "$CONFIG_DIR/symphony.env" ]; then
+  log "  seeding $CONFIG_DIR/symphony.env from $DEPLOY_DIR/symphony-py.env.example (m 0640)"
   install -m 0640 \
-    "$DEPLOY_DIR/symphony-py.env.example" "$ETC_DIR/symphony.env"
+    "$DEPLOY_DIR/symphony-py.env.example" "$CONFIG_DIR/symphony.env"
   log "  seeded OK"
 else
-  log "  $ETC_DIR/symphony.env already exists; preserving"
+  log "  $CONFIG_DIR/symphony.env already exists; preserving"
 fi
 
-if [ ! -f "$ETC_DIR/WORKFLOW.md" ]; then
+if [ ! -f "$CONFIG_DIR/WORKFLOW.md" ]; then
   if [ -f "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" ]; then
-    log "  seeding $ETC_DIR/WORKFLOW.md from python/examples/ (m 0640)"
+    log "  seeding $CONFIG_DIR/WORKFLOW.md from python/examples/ (m 0640)"
     install -m 0640 \
-      "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" "$ETC_DIR/WORKFLOW.md"
+      "$PYTHON_DIR/examples/WORKFLOW.github-opencode.md" "$CONFIG_DIR/WORKFLOW.md"
     log "  seeded OK"
   else
-    log "  WARN: no WORKFLOW.md example found at $PYTHON_DIR/examples/WORKFLOW.github-opencode.md; create $ETC_DIR/WORKFLOW.md by hand"
+    log "  WARN: no WORKFLOW.md example found at $PYTHON_DIR/examples/WORKFLOW.github-opencode.md; create $CONFIG_DIR/WORKFLOW.md by hand"
   fi
 else
-  log "  $ETC_DIR/WORKFLOW.md already exists; preserving"
+  log "  $CONFIG_DIR/WORKFLOW.md already exists; preserving"
 fi
-log "step 4/5: $ETC_DIR ready"
+log "step 4/5: $CONFIG_DIR ready"
 
 # ---------------------------------------------------------------------------
-# Step 5/5: Install systemd units to /etc/systemd/system/
+# Step 5/5: Render and install systemd units to /etc/systemd/system/
 # ---------------------------------------------------------------------------
-log "step 5/5: installing systemd units to /etc/systemd/system/"
+log "step 5/5: rendering and installing systemd units to /etc/systemd/system/"
 # Intentional v1.1+ behavior: unconditionally overwrite. Re-runs pick up
 # any service-file changes in the repo. See deploy/README.md "v1.1+" note.
+
+# Render to a temp file under the deploy dir, then install to
+# /etc/systemd/system/. The deploy dir is writable by the user; the
+# systemd dir is not, so we must render first.
+TMP_RENDER_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_RENDER_DIR"' EXIT
+log "  rendering $DEPLOY_DIR/symphony-py.service.in -> $TMP_RENDER_DIR/symphony-py.service"
+render_template \
+  "$DEPLOY_DIR/symphony-py.service.in" \
+  "$TMP_RENDER_DIR/symphony-py.service" \
+  0644
+log "  rendering $DEPLOY_DIR/symphony-py-pull.service.in -> $TMP_RENDER_DIR/symphony-py-pull.service"
+render_template \
+  "$DEPLOY_DIR/symphony-py-pull.service.in" \
+  "$TMP_RENDER_DIR/symphony-py-pull.service" \
+  0644
 
 # 5a. Detect any pre-existing service so we can warn the user before
 # overwriting. We don't fail — overwriting is intentional — but the user
@@ -185,19 +230,19 @@ else
 fi
 
 log "  installing symphony-py.service (m 0644)"
-install -m 0644 "$DEPLOY_DIR/symphony-py.service" \
+install -m 0644 "$TMP_RENDER_DIR/symphony-py.service" \
                  /etc/systemd/system/symphony-py.service
 
 log "  installing symphony-py-pull.service (m 0644)"
-install -m 0644 "$DEPLOY_DIR/symphony-py-pull.service" \
+install -m 0644 "$TMP_RENDER_DIR/symphony-py-pull.service" \
                  /etc/systemd/system/symphony-py-pull.service
 
 log "  installing symphony-py.timer (m 0644)"
 install -m 0644 "$DEPLOY_DIR/symphony-py.timer" \
                  /etc/systemd/system/symphony-py.timer
 
-log "  creating lock directory"
-install -d -m 0755 ~/.symphony/.lock
+log "  creating lock directory $REPO_DIR/.lock (m 0755)"
+install -d -m 0755 "$REPO_DIR/.lock"
 
 log "  reloading systemd daemon"
 if ! systemctl daemon-reload; then
@@ -211,15 +256,16 @@ cat <<EOF
 Installed. Orchestrator service NOT started yet (configure first).
 
   Repo:        $REPO_DIR
+  Config dir:  $CONFIG_DIR
   Compose:     $DEPLOY_DIR/docker-compose.yml
-  Env file:    $ETC_DIR/symphony.env       chmod 640
-  Workflow:    $ETC_DIR/WORKFLOW.md        chmod 640
+  Env file:    $CONFIG_DIR/symphony.env       chmod 640
+  Workflow:    $CONFIG_DIR/WORKFLOW.md        chmod 640
   Pull timer:  NOT enabled (no surprises during manual testing)
   Service:     NOT enabled
 
 Next steps:
-  1. Edit  $ETC_DIR/symphony.env   (set GITHUB_TOKEN, etc.)
-  2. Edit  $ETC_DIR/WORKFLOW.md    (point tracker.project_slug at Will2612/symphony, etc.)
+  1. Edit  $CONFIG_DIR/symphony.env   (set GITHUB_TOKEN, etc.)
+  2. Edit  $CONFIG_DIR/WORKFLOW.md    (point tracker.project_slug at Will2612/symphony, etc.)
   3. Pre-pull the image:
        cd $REPO_DIR && docker compose pull
   4. Foreground test (Ctrl-C to stop):
