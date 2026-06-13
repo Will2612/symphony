@@ -3,13 +3,22 @@
 # container. Idempotent: no-op when nothing changed.
 #
 # Triggered by deploy/symphony-py.timer. Runs as root.
-# Safe to run by hand: sudo /opt/symphony/deploy/pull-and-restart.sh
+# Safe to run by hand: sudo ~/.symphony/deploy/pull-and-restart.sh
+# Override the install location with REPO_DIR=/path/to/repo.
+#
+# $HOME note: this script is invoked by the systemd timer as root, in
+# which case $HOME=/root and the default REPO_DIR resolves to
+# /root/.symphony — matching where install.sh (also run as root via
+# sudo) clones the repo. If you ever change the timer to run as a
+# non-root user, also pass REPO_DIR explicitly to point at the user's
+# install.
 set -euo pipefail
 
-LOCK_FILE="/opt/symphony/.lock/symphony-pull-lock"
+REPO_DIR="${REPO_DIR:-$HOME/.symphony}"
+LOCK_FILE="${REPO_DIR}/.lock/symphony-pull-lock"
 mkdir -p "$(dirname "$LOCK_FILE")"
 
-COMPOSE_DIR="${COMPOSE_DIR:-/opt/symphony}"
+COMPOSE_DIR="${COMPOSE_DIR:-$REPO_DIR}"
 SERVICE_NAME="${SERVICE_NAME:-symphony}"
 
 log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; sync; }

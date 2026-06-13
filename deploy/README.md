@@ -10,29 +10,56 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
               |  GitHub Actions      |-----------------------------+
               |  build-image.yml     |                             |
               +----------------------+                             v
-                                                +-----------------------------+
-                                                |  ghcr.io/Will2612/symphony  |
-                                                |  :python_implementation_   |
-                                                |  trial (linux/arm64)       |
-                                                +--------------+--------------+
-                                                               |
+                                                 +-----------------------------+
+                                                 |  ghcr.io/Will2612/symphony  |
+                                                 |  :python_implementation_   |
+                                                 |  trial (linux/arm64)       |
+                                                 +--------------+--------------+
+                                                                |
                           +--------------------------+           | docker pull
                           | systemd timer (1 min)    |           | (systemd pull svc or manual)
                           | symphony-py.timer        |---------->+
                           +--------------------------+           |
-                                                               v
-                                                +-----------------------------+
-                                                |  docker compose up          |
-                                                |  ~/.symphony              |
-                                                |  (named volume: workspaces)|
-                                                +--------------+--------------+
-                                                               |
-                                                               v
-                                                +-----------------------------+
-                                                |  Symphony container         |
-                                                |  symphony-py.service        |
-                                                +--------------+--------------+
+                                                                v
+                                                 +-----------------------------+
+                                                 |  docker compose up          |
+                                                 |  ~/.symphony                |
+                                                 |  (named volume: workspaces)|
+                                                 +--------------+--------------+
+                                                                |
+                                                                v
+                                                 +-----------------------------+
+                                                 |  Symphony container         |
+                                                 |  symphony-py.service        |
+                                                 +-----------------------------+
 ```
+
+## Path conventions
+
+All deploy paths are templated from two environment variables, with
+sensible defaults that match a single-user install on a Pi:
+
+| Variable      | Default                      | Purpose                                        |
+|---------------|------------------------------|------------------------------------------------|
+| `REPO_DIR`    | `~/.symphony`                | Where the Symphony clone lives                |
+| `CONFIG_DIR`  | `~/.config/symphony`         | Where `symphony.env` + `WORKFLOW.md` live     |
+| `BRANCH`      | `python_implementation_trial`| Git branch to check out                       |
+| `REPO_URL`    | `github.com/Will2612/...`    | Git URL to clone                              |
+
+Override any of them at install time:
+
+```bash
+sudo REPO_DIR=/srv/symphony CONFIG_DIR=/etc/symphony bash install.sh
+```
+
+`install.sh` renders the two systemd service templates
+(`deploy/symphony-py.service.in`, `deploy/symphony-py-pull.service.in`)
+by substituting these variables via `envsubst`, then writes the
+rendered files to `/etc/systemd/system/`. `deploy/docker-compose.yml`
+is shipped as a templated file that `docker compose` interpolates at
+runtime from `CONFIG_DIR` and `OPENCODE_BIND_SOURCE` (set in
+`deploy/.env` by `install.sh`). Re-running `install.sh` re-renders the
+systemd units and re-syncs `deploy/.env`.
 
 ## Prerequisites
 
@@ -49,6 +76,10 @@ every push to `python_implementation_trial`; the Pi just pulls and runs.
 - **docker compose v2 plugin** — ships with Docker Desktop; on server Ubuntu:
   ```bash
   apt install docker-compose-plugin
+  ```
+- **gettext-base** (provides `envsubst`) — for rendering `deploy/*.in` templates:
+  ```bash
+  apt install gettext-base
   ```
 - **opencode (runner binary)** — the agent subprocess that the orchestrator spawns.
   Installed on the **host** and bind-mounted read-only into the container at
@@ -101,17 +132,17 @@ curl -fsSL https://raw.githubusercontent.com/Will2612/symphony/python_implementa
 
 This script runs in 5 numbered steps, all logged to stdout (each step starts with a `step N/5: …` banner):
 
-1. **Prerequisites** (read-only, fail-fast before any host change): running as root, `docker` on PATH, the `docker compose` v2 plugin, and the `opencode` binary. If any of these fail, the script aborts before touching the host.
+1. **Prerequisites** (read-only, fail-fast before any host change): `envsubst` on PATH (for systemd template rendering), running as root, `docker` on PATH, the `docker compose` v2 plugin, and the `opencode` binary. If any of these fail, the script aborts before touching the host.
 2. **Clone or update the repository** at `~/.symphony` (reuses an existing clone if present; switches the working tree to the target branch).
-3. **Seed `deploy/.env`** from `deploy/.env.example`, recording `OPENCODE_BIND_SOURCE` if unset (auto-detected from the invoking user's `~/.opencode/bin/opencode`; the user can override by editing `deploy/.env`).
-4. **Seed `~/.config/symphony`** with `symphony.env` (from `deploy/symphony-py.env.example`) and `WORKFLOW.md` (from `python/examples/WORKFLOW.github-opencode.md`).
-5. **Install the three systemd units** (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`) to `/etc/systemd/system/`. If a prior service is already installed, the script logs a heads-up before overwriting; if it is active or enabled, it logs a `WARN` or `INFO` line. Finally runs `systemctl daemon-reload`.
+3. **Seed `deploy/.env`** from `deploy/.env.example`, recording `CONFIG_DIR` and `OPENCODE_BIND_SOURCE` (auto-detected from the invoking user's `~/.opencode/bin/opencode`; the user can override by editing `deploy/.env`). These two vars are interpolated by `deploy/docker-compose.yml` at runtime.
+4. **Seed `~/.config/symphony`** (or `$CONFIG_DIR`) with `symphony.env` (from `deploy/symphony-py.env.example`) and `WORKFLOW.md` (from `python/examples/WORKFLOW.github-opencode.md`).
+5. **Render and install the three systemd units** (`symphony-py.service`, `symphony-py-pull.service`, `symphony-py.timer`) to `/etc/systemd/system/`. The two service files are rendered from `*.service.in` with `REPO_DIR` / `CONFIG_DIR` substituted in. If a prior service is already installed, the script logs a heads-up before overwriting; if it is active or enabled, it logs a `WARN` or `INFO` line. Finally runs `systemctl daemon-reload`.
 
 It does **not** start or enable any services.
 
 ## Configure
 
-Edit two files on the Pi:
+Edit two files on the Pi (or wherever `CONFIG_DIR` points):
 
 ### 1. `~/.config/symphony/symphony.env`
 
@@ -228,6 +259,15 @@ sudo systemctl reset-failed symphony-py.service
 sudo systemctl start symphony-py.service
 ```
 
+### `docker compose` complains about missing env_file at `${CONFIG_DIR}/symphony.env`
+
+The file is seeded by `install.sh`; if you moved `CONFIG_DIR` after
+installing, point the variable at the new location and either re-run
+`install.sh` (which writes the new value to `deploy/.env`) or edit the
+path directly in `deploy/docker-compose.yml`. Note: `make -C deploy verify`
+masks this specific error (treating a missing env_file as a successful
+config check), so the issue will only surface on `docker compose up`.
+
 ## Uninstall
 
 ```bash
@@ -287,6 +327,7 @@ Run these on the Pi before installing. Fix any missing items before proceeding.
 ### Core Software (all on host)
 - [ ] `docker --version` — Docker Engine 24+ required
 - [ ] `docker compose version` — v2 plugin (NOT v1 standalone `docker-compose`)
+- [ ] `envsubst --version` — for `install.sh` template rendering
 - [ ] `curl --version` — for the one-line install recipe
 - [ ] `git --version` — for `install.sh` cloning and branch updates
 - [ ] `bash --version` — ≥ 4 (Ubuntu 24.04 ships 5.1)
@@ -341,8 +382,7 @@ create that user or the venv.
 If you are upgrading from an older install, re-run:
 ```bash
 sudo systemctl disable --now symphony-py.service
-sudo install -m 0644 ~/.symphony/deploy/symphony-py.service \
-               /etc/systemd/system/symphony-py.service
+sudo bash ~/.symphony/deploy/install.sh
 sudo systemctl daemon-reload
 sudo systemctl enable --now symphony-py.service
 ```
