@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M0 收尾 — Swift 6 运行时壳落地</title>
+<meta name="description" content="Symphony Swift 端口的 M0 收尾：8 个文件、3 个原 fixup、1 个 CI 验证 bug、9 个 review commit。GHCR 多架构镜像已上线。">
+<meta property="og:title" content="M0 收尾 — Swift 6 运行时壳落地">
+<meta property="og:description" content="Symphony Swift 端口 M0 milestone 收尾：8 个文件、CI 端到端跑通、M1 入口。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://github.com/Will2612/symphony/blob/main/blog/0001-m0-wrap-up.html">
+<meta name="author" content="Will">
+<style>
+  :root {
+    --bg: #fffff8;
+    --fg: #111;
+    --muted: #666;
+    --rule: #ccc;
+    --accent: #a93226;
+    --code-bg: #f7f7f4;
+    --note-bg: #fdf6e3;
+  }
+  html { box-sizing: border-box; }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    margin: 0;
+    color: var(--fg);
+    background: var(--bg);
+    font-family: "Noto Serif CJK SC", "Source Han Serif SC", Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  .post {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 3rem 6rem 6rem 6rem;
+    position: relative;
+  }
+
+  .post h1 {
+    font-size: 2.1rem;
+    margin: 0 0 0.3rem 0;
+    font-weight: 700;
+  }
+  .post h2 {
+    font-size: 1.45rem;
+    margin: 2.6rem 0 0.9rem 0;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.4rem;
+  }
+  .post h3 {
+    font-size: 1.15rem;
+    margin: 1.6rem 0 0.6rem 0;
+    color: var(--accent);
+  }
+
+  .meta {
+    color: var(--muted);
+    font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+    font-size: 0.88rem;
+    margin: 0 0 2.5rem 0;
+    letter-spacing: 0.04em;
+  }
+
+  .epigraph {
+    margin: 0 0 2.4rem 0;
+    padding: 0.6rem 1.2rem;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+    font-style: italic;
+    background: var(--note-bg);
+  }
+
+  /* ===== Tufte-style marginal notes ===== */
+  .marginnote, .sidenote {
+    float: right;
+    clear: right;
+    width: 240px;
+    margin-right: -280px;
+    margin-top: 0.3rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--muted);
+    font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+    position: relative;
+  }
+  .sidenote { width: 180px; margin-right: -200px; }
+  .sidenote::before {
+    content: counter(sidenote) "  ";
+    counter-increment: sidenote;
+    color: var(--accent);
+    font-weight: 600;
+    vertical-align: super;
+    font-size: 0.78rem;
+  }
+  body { counter-reset: sidenote; }
+
+  /* ===== Code ===== */
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", "DejaVu Sans Mono", Consolas, monospace;
+    font-size: 0.88em;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 0.05em 0.32em;
+    border-radius: 2px;
+    color: #2a2a2a;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 1rem 1.2rem;
+    border-radius: 2px;
+    overflow-x: auto;
+    line-height: 1.45;
+    margin: 1rem 0;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  a {
+    color: #1e6091;
+    text-decoration: none;
+    border-bottom: 1px dotted #1e6091;
+  }
+  a:hover { border-bottom-style: solid; }
+
+  ul, ol { padding-left: 1.6rem; }
+  li { margin-bottom: 0.4rem; }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--rule);
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  footer h2 { color: var(--fg); }
+
+  .commit-ref {
+    font-family: "JetBrains Mono", "SF Mono", "DejaVu Sans Mono", Consolas, monospace;
+    font-size: 0.84em;
+    color: var(--accent);
+  }
+
+  @media (max-width: 1100px) {
+    .post { padding: 2rem 1.4rem; }
+    .marginnote, .sidenote {
+      float: none;
+      width: auto;
+      margin: 0.4rem 0 0.8rem 0;
+      display: block;
+    }
+  }
+</style>
+</head>
+<body>
+<article class="post">
+
+<h1>M0 收尾 — Swift 6 运行时壳落地</h1>
+<p class="meta">M0 of 5 · 2026-06-14 · Symphony Swift 端口 · <a href="https://github.com/Will2612/symphony">Will2612/symphony</a></p>
+
+<div class="epigraph">
+  M0 没用一行业务代码，只为后续 M1–M4 铺好 Swift 6 工具链、容器化、和 GHCR 发布这条通路。
+  跑完这一步，<code>docker pull ghcr.io/will2612/symphony:dev &amp;&amp; docker run --rm ... --version</code> 应该可工作。
+</div>
+
+<p>
+  这是 5 篇里程碑博客中的第 1 篇。M0 = Swift 6 运行时壳：CLI + 多架构 Docker + GitHub Actions + GHCR 发布。
+  业务逻辑（Configuration、Tracker、Orchestrator、Worker 协议）一律留给 M1–M4。
+  本篇按"<a href="#2-8-个产物">是什么</a> → <a href="#3-关键修正">踩了什么坑</a> → <a href="#4-ci-端到端跑通的物证">物证</a> →
+  <a href="#5-3-个待定项关闭">决策</a> → <a href="#6-m1-入口">下集预告</a>"的顺序展开。
+</p>
+
+<h2 id="1-m0-是什么-不是-什么">1. M0 是什么 &amp; 不是什么</h2>
+
+<p><strong>M0 = 8 个文件</strong>，加起来 230 行，能让一个 Swift 6 进程以 <code>symphony</code> 之名在 amd64 与 arm64 容器里跑起来、对外报版本与帮助、然后干净退出。三个 feature：</p>
+
+<ol>
+  <li><strong>CLI shell</strong>：<code>--version</code> / <code>--help</code>，错误时退 64（BSD sysexits <code>EX_USAGE</code>）</li>
+  <li><strong>多阶段 Dockerfile</strong>：builder 装 <code>swift:6.3.2-noble</code> + 缓存挂载，runtime 切到 <code>swift:6.3.2-noble-slim</code> + 非 root（UID 10001）</li>
+  <li><strong>CI</strong>：每次 <code>swift-implementation</code> 推 commit 或 <code>v*</code> tag，GitHub Actions 单 job + QEMU 交叉编译，构建多架构镜像推到 <code>ghcr.io/will2612/symphony</code></li>
+</ol>
+
+<p><strong>M0 不做</strong>：不读 <code>WORKFLOW.md</code>、不发任何 HTTP 请求、不接 codex 也不接 opencode、不轮询任何 tracker。
+  那些是 <a href="#6-m1-入口">M1</a>、M2、M3 的事。M0 是一根干净的零号管线——通了之后再加支路。</p>
+
+<span class="marginnote">整个 M0 期间 0 第三方 Swift 依赖（<code>Package.swift</code> 至今只有 stdlib + Foundation）。下一里程碑才考虑加 <code>Yams</code>、<code>swift-argument-parser</code>、<code>swift-log</code>。</span>
+
+<h2 id="2-8-个产物">2. 8 个产物</h2>
+
+<p>每个文件一段。行号引用指向 <code>swift-implementation</code> 分支当前状态（commit <code>a6c23b8</code>）。</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/Package.swift">Package.swift</a> — 13 行</h3>
+<p>
+  <code>swift-tools-version: 6.3</code>，单个 <code>executableTarget(name: "Symphony")</code>，<code>platforms: [.macOS(.v14)]</code>。
+  没有 <code>path:</code> 也没有第三方依赖——<code>Sources/Symphony/main.swift</code> 由 SPM 默认约定解析。
+  <code class="commit-ref">460b802</code> 把 tools-version 从 6.0 升到 6.3（与运行时基础镜像 <code>swift:6.3.2-noble</code> 对齐），
+  同时把冗余的 <code>path: "Sources/Symphony"</code> 行删了。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/Sources/Symphony/main.swift">Sources/Symphony/main.swift</a> — 39 行</h3>
+<p>
+  <code>import Foundation</code>，4 个常量（<code>version</code>、<code>swiftVersion</code>、<code>argv</code>、<code>exeName</code>），两个打印函数，一个 <code>guard</code> 拦无参，一个 <code>switch</code> 分发 <code>--version/-v</code> / <code>--help/-h</code> / 未知项退 64。
+  版本号硬编码在文件顶部——不接 <code>git describe</code>（M0 阶段不需要版本自动化）。
+  <code class="commit-ref">87c0dbb</code> 删了 help 末尾指向 <code>SPEC.md</code> 与 <code>Plan.md</code> 的死链（runtime 容器里没这俩文件）。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/deploy/Dockerfile">deploy/Dockerfile</a> — 18 行</h3>
+<p>
+  两阶段：builder 用 <code>--platform=$TARGETPLATFORM</code>（<strong>非</strong> <code>$BUILDPLATFORM</code>，见 §3），
+  <code>--mount=type=cache</code> 把 <code>/root/.cache/swift</code> 与 <code>/build/.build</code> 挂出去加速冷构建。
+  runtime 切到 <code>-slim</code> 镜像，<code>useradd -m -u 10001 symphony</code>，<code>USER symphony</code>。
+  <code class="commit-ref">196be8f</code> 在 runtime 阶段也加了 <code>--platform=$TARGETPLATFORM</code>（虽然 BuildKit 默认已经按 target platform 解析，显式写出来防止未来 BuildKit 改默认），
+  顺带建了仓根的 <code>.dockerignore</code>——把 <code>.git</code>、<code>.github</code>、各种 <code>.md</code> 排除在构建上下文外，冷构建上下文从 ~30MB 缩到几百 KB。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/deploy/docker-compose.yml">deploy/docker-compose.yml</a> — 13 行</h3>
+<p>
+  <code>name: symphony</code>，单服务，<code>context: ..</code>（compose 文件本身在 <code>deploy/</code> 里，<code>.</code> 会解析到 <code>deploy/</code>，<code class="commit-ref">d1fb1df</code> 改回仓根），
+  <code>image: ghcr.io/will2612/symphony:dev</code>，<code>command: ["--version"]</code>，<code>restart: "no"</code>。
+  bind mount <code>./repos</code> 和 <code>./logs</code> 在 M0 阶段只占位，compose up 跑完就退，验证管线通畅。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/deploy/.env.example">deploy/.env.example</a> — 15 行</h3>
+<p>
+  纯文档桩。M0 不消费任何环境变量。三个 section：<code>OPENAI_API_KEY</code>（M2+ codex worker 专用）、
+  <code>GITHUB_TOKEN</code> / <code>GITHUB_PROJECT_OWNER</code> / <code>GITHUB_PROJECT_NUMBER</code>（M1+ GitHub Projects）、
+  <code>OPENCODE_HOST/PORT</code>（M2+ 默认 worker opencode/ACP）和 <code>CODEX_HOST/PORT</code>（M2+ 可选 worker codex v2 JSON-RPC）。
+  <code class="commit-ref">2d33e99</code> 补了 OPENCODE 段以对齐 <a href="https://github.com/Will2612/symphony/blob/main/MISSION.md">MISSION</a> 里"opencode 是默认 worker"的决定，
+  同时把 <code>.env</code> / <code>.env.*</code> 加进 <code>.gitignore</code>，避免用户复制 <code>.env.example</code> 时意外 commit。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/.github/workflows/release.yml">.github/workflows/release.yml</a> — 67 行</h3>
+<p>
+  <strong>单 job + QEMU</strong>，不是 per-arch matrix。触发条件：<code>push branches: [swift-implementation]</code>、
+  <code>push tags: ['v*']</code>、<code>workflow_dispatch</code>。
+  6 个 <code>uses:</code> 全 SHA-pin（<code>actions/checkout@34e1148</code> 等等），行尾注释标版本号，Elixir 仓的 supply-chain 约定。
+  <code>docker/metadata-action</code> 配 <code>flavor: latest=false</code>，输出三种 tag：
+  <code>:dev</code>（branch + tag push 都出，指向最新）、<code>:vX.Y.Z</code>（仅 semver tag）、<code>:sha-abc1234</code>（所有 push）。
+  <code>provenance: false</code> + <code>sbom: false</code> 关掉 buildkit 的 SLSA attestation 副作用。
+  <code class="commit-ref">d3402a7</code> 钉 SHA + 改 <code>{{raw}}</code>（保留 <code>v</code>） + 禁 <code>:latest</code>；
+  <code class="commit-ref">b43988f</code> 加 branch trigger + <code>:sha</code> tag；
+  <code class="commit-ref">0a09870</code> 把 per-arch matrix 换成单 job + QEMU（见 §3）；
+  <code class="commit-ref">8216270</code> 关 attestations。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/.gitignore">.gitignore</a> — 11 行</h3>
+<p>
+  Swift 标准（<code>.build/</code>、<code>.swiftpm/</code>、<code>*.xcodeproj</code>）+ 项目特定（<code>repos/</code>、<code>logs/</code>、<code>workspaces/</code>）+ <code>.env*</code>。
+  <strong>不</strong>忽略 <code>Package.resolved</code>（<code class="commit-ref">6ce820a</code> 改的）——SPM lockfile 跟 Elixir 的 <code>mix.lock</code> 一样 commit，
+  M1+ 引入第三方 Swift 依赖时这条策略就生效。
+</p>
+
+<h3><a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/README.md">README.md</a> — 35 行</h3>
+<p>
+  两段定位（"长跑守护进程" + "Swift 端口"）、一个 quick-start 代码块、三个链接（<code>Plan.md</code>、<code>SPEC.md</code>、教学仓）、Apache 2.0 license。
+  quick-start 写的是 <code>docker run --rm ghcr.io/will2612/symphony:dev --version</code>——M0 收尾前这个命令真的会工作（见 §4）。
+</p>
+
+<h2 id="3-关键修正">3. 关键修正（Plan → Code 偏差）</h2>
+
+<p>M0 收尾时回看，发现实施过程中 Plan §3 的 3 段草案与实际代码有 4 处偏差，外加 review 阶段又抓出 1 个真 bug。其中 3 个是"Plan 写错"——值得给未来的自己留个标记。</p>
+
+<h3>偏差 1：BuildKit cache mount 不可见 (<code class="commit-ref">2395a20</code>)</h3>
+<p>
+  Plan §3.5 草案直接 <code>COPY --from=builder /build/.build/release/symphony /usr/local/bin/symphony</code>，但
+  <code>--mount=type=cache,target=/build/.build</code> 挂的是 cache mount，<strong>只在那个 <code>RUN</code> 指令期间存在</strong>，
+  后续 <code>FROM</code> 看不到。修法是先 <code>cp /build/.build/release/symphony /symphony</code> 把产物拷出 mount，
+  再 <code>COPY --from=builder /symphony</code>。
+</p>
+
+<h3>偏差 2：compose build context 解析 (<code class="commit-ref">d1fb1df</code>)</h3>
+<p>
+  Plan §3.6 草案 <code>context: .</code>，但 compose 文件本身就在 <code>deploy/</code> 里，<code>.</code> 解析成 <code>deploy/</code>，
+  接着 <code>dockerfile: deploy/Dockerfile</code> 就会去找 <code>deploy/deploy/Dockerfile</code>——不存在。
+  改 <code>context: ..</code> 回到仓根。这是经典的"相对路径相对哪里"陷阱。
+</p>
+
+<h3>偏差 3：<code>$BUILDPLATFORM</code> vs <code>$TARGETPLATFORM</code> (<code class="commit-ref">aa83346</code>)</h3>
+<p>
+  Plan §3.5 草案 <code>FROM --platform=$BUILDPLATFORM</code>，逻辑是"在什么架构上跑 build"。但 Swift **没有原生跨编译**——
+  <code>Package.swift</code> 的 <code>platforms: [.macOS(.v14)]</code> 不触发 Linux 跨编译，
+  也没法在 amd64 runner 上原生 build arm64。修正为 <code>$TARGETPLATFORM</code>，搭配 QEMU 做 arm64 模拟（见偏差 4）。
+  这个差异用 <code>file /symphony</code> 一行命令就抓出来了——最初 build 出来是 <code>x86-64</code>，不是 <code>aarch64</code>。
+</p>
+
+<h3>偏差 4：per-arch matrix 同 tag 后写覆盖前写 (<code class="commit-ref">0a09870</code>)</h3>
+<p>
+  最初设计是 per-arch matrix：两个 job 分别跑在 <code>ubuntu-latest</code> (amd64) 和 <code>ubuntu-24.04-arm</code> (arm64) 上，
+  各自 build 单架构镜像，<strong>推同一个 tag</strong>。结果：哪个 job 后完成哪个赢，GHCR 里只剩一个架构 + 一个 buildkit provenance attestation。
+  验证命令 <code>docker manifest inspect ghcr.io/will2612/symphony:sha-b43988f</code> 返回
+  <code>arm64 + unknown</code>——amd64 manifest 被覆盖了。修法是单 job + <code>--platform linux/amd64,linux/arm64</code>，
+  buildx 一次性出多架构 OCI image index。arm64 走 QEMU 模拟，比 native 慢 5-10 倍，但跑得通。
+</p>
+
+<h3>Review 抓出的小坑（已修）</h3>
+<p>在 file-by-file review（每个文件 1 个 commit）阶段还修了几处：</p>
+<ul>
+  <li><code class="commit-ref">460b802</code>：<code>swift-tools-version</code> 6.0 → 6.3；删 <code>path: "Sources/Symphony"</code> 冗余行</li>
+  <li><code class="commit-ref">87c0dbb</code>：删 help 文本里指向 <code>SPEC.md/Plan.md</code> 的死链</li>
+  <li><code class="commit-ref">d3402a7</code>：所有 <code>uses:</code> SHA-pin + 改 <code>{{raw}}</code> 保留 <code>v</code> 前缀 + <code>flavor: latest=false</code></li>
+  <li><code class="commit-ref">6ce820a</code>：<code>Package.resolved</code> 改为 commit（匹配 Elixir <code>mix.lock</code> 策略）</li>
+</ul>
+
+<h2 id="4-ci-端到端跑通的物证">4. CI 端到端跑通的物证</h2>
+
+<p>最关键的事：<strong>我能不能真的拉到这个 image 并跑起来</strong>？能。commit <code class="commit-ref">8216270</code> 之后我做了四次验证：</p>
+
+<pre><code>$ docker pull --quiet ghcr.io/will2612/symphony:dev
+ghcr.io/will2612/symphony:dev
+$ docker run --rm ghcr.io/will2612/symphony:dev --version
+symphony 0.0.0-dev (swift 6.3.2)
+
+$ docker manifest inspect ghcr.io/will2612/symphony:dev \
+    | jq -c '.manifests[] | {arch: .platform.architecture, os: .platform.os, bytes: .size}'
+{"arch":"amd64","os":"linux","bytes":1489}
+{"arch":"arm64","os":"linux","bytes":1489}
+
+$ gh run list --repo Will2612/symphony --workflow=release --limit 1
+completed  success  8216270  swift-implementation  38s</code></pre>
+
+<p>三件事值得拎出来：</p>
+
+<ol>
+  <li><strong>manifest 干净</strong>。只有 amd64 + arm64，<strong>没有</strong> <code>architecture: unknown</code> 幽灵。
+    那是 buildkit 默认会塞进来的 SLSA provenance attestation（每个 arch 1 个），用
+    <code>provenance: false</code> + <code>sbom: false</code> 关掉。开了会更"SLSA Level 3 合规"，但
+    GHCR UI 里看着像 4 个平台，困惑大于价值。M4 收尾时再开。
+  </li>
+  <li><strong>CI 跑了 38 秒</strong>，因为命中 GHA cache。
+    冷构建第一次（commit <code class="commit-ref">b43988f</code>）是 4 分 13 秒——主要时间花在装 Swift 6.3.2 toolchain（~1.5 分钟）和首次 swift build（~2.5 分钟）。
+    之后每次 push，cache 命中，build 阶段 ~30 秒。
+  </li>
+  <li><strong>没有跑过 semver tag 路径</strong>。所有验证都是 branch push；<code>{{raw}}</code> + <code>{{semver}}</code> 在 metadata-action 配置里结构同源，但
+    真推一个 <code>v0.0.0-dev</code> tag 才会触发 <code>:v0.0.0-dev</code> tag 的产出。M1 启动时我会推一次作为冒烟。
+  </li>
+</ol>
+
+<span class="marginnote">想看 CI 现场：<a href="https://github.com/Will2612/symphony/actions?query=workflow%3Arelease">github.com/Will2612/symphony/actions?query=workflow:release</a>。<br><br>想直接拉镜像：<code>docker pull ghcr.io/will2612/symphony:dev</code>。</span>
+
+<h2 id="5-3-个待定项关闭">5. 3 个待定项关闭</h2>
+
+<p>Plan §4 列了 8 个"需在实施前敲定"的项。M0 期间敲定了 3 个，写进 <a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/Plan.md">Plan.md</a>：</p>
+
+<table style="border-collapse: collapse; margin: 0.5rem 0 1rem 0;">
+  <thead>
+    <tr style="border-bottom: 1px solid var(--rule);">
+      <th style="text-align: left; padding: 0.4rem 1rem 0.4rem 0;">项</th>
+      <th style="text-align: left; padding: 0.4rem 0;">决定</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 0.4rem 1rem 0.4rem 0; vertical-align: top;"><strong>GHCR owner</strong></td>
+      <td style="padding: 0.4rem 0;"><code>will2612</code>（个人用户名，<code>git@github.com:Will2612/symphony.git</code>）</td>
+    </tr>
+    <tr>
+      <td style="padding: 0.4rem 1rem 0.4rem 0; vertical-align: top;"><strong>CI tag 策略</strong></td>
+      <td style="padding: 0.4rem 0;">单 job + QEMU 多架构；branch push 出 <code>:dev</code> + <code>:sha</code>；semver tag 多出 <code>:vX.Y.Z</code>；永远不推 <code>:edge</code> 也不推 <code>:latest</code></td>
+    </tr>
+    <tr>
+      <td style="padding: 0.4rem 1rem 0.4rem 0; vertical-align: top;"><strong>本地 dev 工作流</strong></td>
+      <td style="padding: 0.4rem 0;">不引入 <code>Makefile</code> / <code>justfile</code>；<code>docker build</code> / <code>docker compose</code> / <code>swift build</code>（容器内）就够了</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>还剩 5 个没敲定，会在对应 milestone 启动时各自决定：模板引擎（M1）、Worker 协议版本锁定（M2）、GitHub Projects state 归一化约定（M1）、WORKFLOW.md 监听方式（M3）、SwiftLint/swift-format 是否启用（M4）。</p>
+
+<h2 id="6-m1-入口">6. M1 入口</h2>
+
+<p>
+  M1 = <strong>Configuration + Tracker</strong>。M1 收尾时 daemon 应当：
+</p>
+
+<ol>
+  <li>能读 <code>WORKFLOW.md</code>（YAML front matter + prompt 模板）→ <code>WorkflowLoader.swift</code></li>
+  <li>能解析 env + 校验 + 动态 reload → <code>Config.swift</code></li>
+  <li>能从 GitHub Projects v2 拉 issue → <code>Tracker</code> 协议 + <code>GitHubProjectsV2Tracker</code>（+ 测试用 <code>MemoryTracker</code>）</li>
+  <li>能渲染 prompt（strict variables + strict filters，§12 规则）</li>
+  <li>能写结构化日志 → <code>StructuredLogger</code></li>
+  <li><code>Issue</code> 领域模型 + 归一化规则（§11.3）</li>
+</ol>
+
+<p>
+  对位 SPEC §5、§6、§11、§12、§13.1。M1 <strong>不做</strong> orchestrator、worker 协议、workspace、retry、stall、reconciliation——那些是 M2/M3。
+  仍不调度、不发 agent——daemon 知道要做什么，但还不会做。
+</p>
+
+<span class="marginnote">教学仓侧，13 篇 lesson 待写（0010-0017 + 0028-0030），中间 0018-0027 是 M2/M3 内容。<br><br>下一节 lesson 0003（"Elixir for Swift developers: process → actor"）准备紧接着 0002 写完——那是个衔接 lesson，架起 Elixir GenServer 与 Swift actor 的概念桥梁。</span>
+
+<footer>
+
+<h2>下集预告</h2>
+
+<p>
+  M1 收尾时是 5 篇博客的第 2 篇，按本系列一致的"是什么 → 踩坑 → 物证 → 决策 → 下集"骨架。
+  预计 13 篇 lesson 写完后（约 2-3 周）出 M1 收尾博客。
+</p>
+
+<h2>本篇引用</h2>
+
+<ul>
+  <li>教学仓：<a href="https://github.com/Will2612/symphony">github.com/Will2612/symphony</a>（含 MISSION.md、NOTES.md、Plan.md、lessons/、blog/）</li>
+  <li>实现仓：<a href="https://github.com/Will2612/symphony-swift">github.com/Will2612/symphony-swift</a>（<code>swift-implementation</code> 分支）</li>
+  <li>SPEC：<a href="https://github.com/Will2612/symphony/blob/main/SPEC.md">github.com/Will2612/symphony/blob/main/SPEC.md</a></li>
+  <li>Plan：<a href="https://github.com/Will2612/symphony-swift/blob/swift-implementation/Plan.md">Plan.md</a>（实施计划 + 决策日志）</li>
+  <li>本篇 commit 历史：<a href="https://github.com/Will2612/symphony/commits/main/blog/0001-m0-wrap-up.html">blog/0001-m0-wrap-up.html</a></li>
+</ul>
+
+</footer>
+
+</article>
+</body>
+</html>
