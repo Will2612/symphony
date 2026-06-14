@@ -1,0 +1,13 @@
+name: symphony
+
+services:
+  symphony:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: ghcr.io/will2612/symphony:dev
+    command: ["--version"]
+    volumes:
+      - ./repos:/app/repos
+      - ./logs:/app/logs
+    restart: "no"
