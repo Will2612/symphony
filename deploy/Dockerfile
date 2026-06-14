@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/root/.cache/swift \
     swift build -c release --static-swift-stdlib && \
     cp /build/.build/release/symphony /symphony
 
-FROM swift:${SWIFT_VERSION}-noble-slim AS runtime
+FROM --platform=$TARGETPLATFORM swift:${SWIFT_VERSION}-noble-slim AS runtime
 RUN useradd -m -u 10001 symphony
 WORKDIR /app
 COPY --from=builder /symphony /usr/local/bin/symphony
