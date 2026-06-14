@@ -18,5 +18,6 @@
 
 #### Test Plan
 
-- [ ] `make -C elixir all`
+- [ ] `docker buildx build --platform linux/amd64 -f deploy/Dockerfile .`
+- [ ] `docker compose -f deploy/docker-compose.yml up`
 - [ ] <!-- Additional targeted checks (list below) -->
