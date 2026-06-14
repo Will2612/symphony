@@ -14,17 +14,8 @@ permissions:
 
 jobs:
   build:
-    name: build (${{ matrix.platform }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-
+    name: build (multi-arch)
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -50,6 +41,7 @@ jobs:
           images: ghcr.io/will2612/symphony
           flavor: latest=false
           tags: |
+            type=raw,value=dev
             type=semver,pattern={{raw}}
             type=sha,format=short
 
@@ -58,7 +50,7 @@ jobs:
         with:
           context: .
           file: deploy/Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
