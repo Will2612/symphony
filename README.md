@@ -1,40 +1,34 @@
-# Symphony
+# Symphony Swift
 
-Symphony turns project work into isolated, autonomous implementation runs, allowing teams to manage
-work instead of supervising coding agents.
+A Swift 6 daemon that implements the [Symphony service specification](SPEC.md).
+Symphony is a long-running supervisor that watches an issue tracker, dispatches
+each ticket to an isolated workspace, runs a coding agent, and reports the
+result back to the board.
 
-[![Symphony demo video preview](.github/media/symphony-demo-poster.jpg)](https://player.vimeo.com/video/1186371009?h=5626e4b899)
+This repository is the Swift port. It replaces the upstream reference's
+hard-coded Linear tracker with **GitHub Projects v2** and treats coding agents
+as a replaceable worker protocol (opencode/ACP by default, codex v2 JSON-RPC as
+an option). M0 ships only the runtime shell: a CLI that prints its version,
+a multi-architecture Docker image, and a CI pipeline that publishes the image
+to GHCR. Business logic lands in M1–M4.
 
-_In this [demo video](https://player.vimeo.com/video/1186371009?h=5626e4b899), Symphony monitors a Linear board for work and spawns agents to handle the tasks. The agents complete the tasks and provide proof of work: CI status, PR review feedback, complexity analysis, and walkthrough videos. When accepted, the agents land the PR safely. Engineers do not need to supervise Codex; they can manage the work at a higher level._
+## Quick start
 
-> [!WARNING]
-> Symphony is a low-key engineering preview for testing in trusted environments.
+```bash
+docker run --rm ghcr.io/will2612/symphony:dev --version
+```
 
-## Running Symphony
+Expected output: `symphony 0.0.0-dev (swift 6.3.2)`.
 
-### Requirements
+## Further reading
 
-Symphony works best in codebases that have adopted
-[harness engineering](https://openai.com/index/harness-engineering/). Symphony is the next step --
-moving from managing coding agents to managing work that needs to get done.
-
-### Option 1. Make your own
-
-Tell your favorite coding agent to build Symphony in a programming language of your choice:
-
-> Implement Symphony according to the following spec:
-> https://github.com/openai/symphony/blob/main/SPEC.md
-
-### Option 2. Use our experimental reference implementation
-
-Check out [elixir/README.md](elixir/README.md) for instructions on how to set up your environment
-and run the Elixir-based Symphony implementation. You can also ask your favorite coding agent to
-help with the setup:
-
-> Set up Symphony for my repository based on
-> https://github.com/openai/symphony/blob/main/elixir/README.md
-
----
+- [`Plan.md`](Plan.md) — implementation plan, milestones M0–M4, and the
+  per-file scope for the M0 runtime shell.
+- [`SPEC.md`](SPEC.md) — language-agnostic service specification (the
+  normative source of truth).
+- [Symphony teaching workspace](https://github.com/Will2612/symphony) —
+  42-lesson curriculum that walks through the SPEC section by section and
+  points back to specific files in this repository for verification.
 
 ## License
 
