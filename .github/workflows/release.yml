@@ -2,6 +2,8 @@ name: release
 
 on:
   push:
+    branches:
+      - swift-implementation
     tags:
       - 'v*'
   workflow_dispatch:
@@ -49,6 +51,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{raw}}
+            type=sha,format=short
 
       - name: build and push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
