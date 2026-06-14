@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(
@@ -8,9 +8,6 @@ let package = Package(
         .executable(name: "symphony", targets: ["Symphony"]),
     ],
     targets: [
-        .executableTarget(
-            name: "Symphony",
-            path: "Sources/Symphony"
-        ),
+        .executableTarget(name: "Symphony"),
     ]
 )
