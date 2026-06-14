@@ -17,7 +17,7 @@ func printHelp() {
       --version, -v    Print version and exit
       --help, -h       Print this help and exit
 
-    Symphony Swift daemon. See SPEC.md and Plan.md.
+    Symphony Swift daemon.
     """
     print(usage)
 }
