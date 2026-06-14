@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 ARG SWIFT_VERSION=6.3.2
 
-FROM --platform=$BUILDPLATFORM swift:${SWIFT_VERSION}-noble AS builder
+FROM --platform=$TARGETPLATFORM swift:${SWIFT_VERSION}-noble AS builder
 WORKDIR /build
 COPY Package.swift ./
 COPY Sources ./Sources
