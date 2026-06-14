@@ -3,7 +3,7 @@ name: symphony
 services:
   symphony:
     build:
-      context: .
+      context: ..
       dockerfile: deploy/Dockerfile
     image: ghcr.io/will2612/symphony:dev
     command: ["--version"]
