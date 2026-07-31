@@ -43,6 +43,12 @@ symphony/
 ├── blog/                    # Promotional and release announcements
 ├── docs/                    # System architecture & domain documentation
 │   ├── 01_architecture_overview.md  # This document
+│   ├── 02_workflow_and_config.md
+│   ├── 03_issue_tracker_integration.md
+│   ├── 04_orchestration_engine.md
+│   ├── 05_workspace_management.md
+│   ├── 06_agent_execution_and_codex.md
+│   ├── 07_observability_and_ui.md
 │   ├── symphony-smoke-board-review.md
 │   └── symphony-smoke-test-one.md
 ├── elixir/                  # Elixir Reference Implementation
@@ -343,6 +349,6 @@ stateDiagram-v2
 
 ### 6.2 Protocol & Boundary Summary
 
-- **Issue Tracker Interface (`SymphonyElixir.Tracker`)**: Elixir Behaviour specifying `fetch_candidate_issues/0`, `fetch_issue_states_by_ids/1`, and `fetch_terminal_issues/0`.
+- **Issue Tracker Interface (`SymphonyElixir.Tracker`)**: Elixir Behaviour specifying `fetch_candidate_issues/0`, `fetch_issues_by_states/1`, `fetch_issue_states_by_ids/1`, `create_comment/2`, and `update_issue_state/2`.
 - **Codex App-Server Protocol (`SymphonyElixir.Codex.AppServer`)**: JSON-RPC 2.0 over stdio pipes or OpenSSH (`ssh -T`) remote streams.
 - **Observability Interface (`SymphonyElixirWeb.Router`)**: HTTP REST API (`/api/v1/state`) and WebSocket-powered Phoenix LiveView (`/`).

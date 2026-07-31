@@ -274,7 +274,7 @@ classDiagram
 ```
 
 ### 5.1 Custom Types & Pre-Processing
-Before passing raw data to `Ecto.Changeset`, two pre-processing steps run:
+Before passing raw data to `Ecto.Changeset`, three pre-processing steps run:
 1. `normalize_keys/1`: Atom keys and nested string keys are converted recursively into string keys.
 2. `drop_nil_values/1`: `nil` values present in the input map are stripped away so that Ecto schema field default values take effect.
 3. `StringOrMap` Ecto Type: Implemented for `codex.approval_policy` to permit either string values (e.g. `"never"`, `"on-request"`) or nested approval decision maps (`%{"reject" => ...}`).

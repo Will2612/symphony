@@ -61,7 +61,7 @@ flowchart TD
 - **Module**: `SymphonyElixir.StatusDashboard` (`elixir/lib/symphony_elixir/status_dashboard.ex`)
 - **Key Configuration Fields**:
   - `refresh_ms` (default `1_000` ms): Polling tick frequency for re-evaluating dashboard metrics.
-  - `render_interval_ms` (default `1_000` ms): Minimum delay between terminal re-renders to prevent flickering.
+  - `render_interval_ms` (default `16` ms, ~60 FPS): Minimum delay between terminal re-renders to prevent flickering.
   - `enabled` (boolean): Controls whether rendering to stdout is enabled (requires `dashboard_enabled: true` and an interactive terminal TTY).
 
 ### 2.2 Terminal Screen Layout & Content Breakdown

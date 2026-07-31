@@ -448,6 +448,6 @@ The behavior of `AgentRunner`, `PromptBuilder`, `AppServer`, and `DynamicTool` i
 | `agent.max_turns` | Integer | `20` | Maximum number of Codex turn iterations allowed per issue attempt. |
 | `codex.command` | String | `"codex app-server"` | Command line executable used to launch Codex process over stdio/SSH. |
 | `codex.turn_timeout_ms` | Integer | `3600000` (1h) | Maximum timeout waiting for turn execution completion before raising `:turn_timeout`. |
-| `codex.read_timeout_ms` | Integer | `30000` (30s) | Response timeout for sync JSON-RPC requests (`initialize`, `thread/start`, `turn/start`). |
+| `codex.read_timeout_ms` | Integer | `5000` (5s) | Response timeout for sync JSON-RPC requests (`initialize`, `thread/start`, `turn/start`). |
 | `tracker.active_states` | List of Strings | `["Todo", "In Progress"]` | List of Linear issue states that keep the multi-turn execution loop active. |
 | `worker.ssh_hosts` | List of Strings | `[]` | Remote SSH worker hosts; if populated, workers run over SSH port streams. |
