@@ -3,33 +3,35 @@
 > Status: Launched
 > Goal: Craft prompt → get user approval → delegate to teamwork_preview
 
-Comprehensively investigate the codebase, draw diagrams to explain its contents, breaking it down by business domain/feature, and generating specific documentation for each core module.
+Investigate the previously undocumented utility and mix task modules in the codebase and generate a dedicated Markdown document for them to complete our 100% coverage goal.
 
 Working directory: /home/will/Projects/symphony
 Integrity mode: development
 
 ## Requirements
 
-### R1. Repository Analysis
-Analyze the repository to understand its overall architecture, key components, and core business domains. 
+### R1. Target Modules Analysis
+Analyze the following specific files that were previously uncovered or only briefly mentioned:
+- `elixir/lib/symphony_elixir_web/error_html.ex`
+- `elixir/lib/symphony_elixir_web/error_json.ex`
+- `elixir/lib/symphony_elixir/log_file.ex`
+- `elixir/lib/mix/tasks/pr_body.check.ex`
+- `elixir/lib/mix/tasks/specs.check.ex`
 
 ### R2. Documentation Generation
-Generate detailed Markdown documentation. The output should be placed in a `docs/` directory within the project. It should include an overall system overview, as well as separate, dedicated documents for each core business domain or module.
+Generate a detailed Markdown document named `08_utilities_and_mix_tasks.md` in the `docs/` directory. It should provide a deep dive into the functionality, logic, and structure of these 5 modules.
 
 ### R3. Diagram Creation
-Embed Mermaid diagrams within the Markdown documentation. Specifically, generate:
-1. An overall system architecture diagram.
-2. Module dependency or class diagrams for each core domain.
-3. Sequence diagrams illustrating the core business flows.
+Embed at least one Mermaid diagram within the Markdown documentation to illustrate the workflow, data flow, or architectural dependencies of these utilities (e.g., a flowchart for the custom Mix tasks).
 
 ## Acceptance Criteria
 
 ### Verification
-- [ ] A `docs/` directory is created in the repository root.
-- [ ] The `docs/` directory contains an overall overview document and multiple domain-specific documents.
-- [ ] Every document contains at least one Mermaid diagram block.
-- [ ] All Mermaid diagrams possess valid syntax and can be rendered without errors.
-- [ ] The documentation accurately reflects the current state and structure of the provided codebase.
+- [ ] A new file `docs/08_utilities_and_mix_tasks.md` is created.
+- [ ] The document explicitly details all 5 target modules.
+- [ ] The document contains at least one Mermaid diagram block.
+- [ ] The Mermaid diagram possesses valid syntax and can be rendered without errors.
+- [ ] The documentation accurately reflects the current state of these modules in the codebase.
 
 ---
 *Next: when approved → delegate via invoke_subagent (see Delegation Protocol)*

@@ -1,65 +1,66 @@
-# BRIEFING — 2026-07-31T21:40:15Z
+# BRIEFING — 2026-07-31T14:08:00Z
 
 ## Mission
-Comprehensively investigate Symphony codebase, generate domain-specific documentation with valid Mermaid diagrams in `docs/`.
+Investigate 5 utility and mix task modules and generate `docs/08_utilities_and_mix_tasks.md` with Mermaid diagrams.
 
 ## 🔒 My Identity
-- Archetype: Project Orchestrator
+- Archetype: teamwork_preview_orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
 - Working directory: /home/will/Projects/symphony/.agents/orchestrator
 - Original parent: top-level
-- Original parent conversation ID: top-level
+- Original parent conversation ID: bd34ee87-7b2f-423d-833c-6cf86d9a8870
 
 ## 🔒 My Workflow
-- **Pattern**: Project
-- **Scope document**: /home/will/Projects/symphony/.agents/orchestrator/PROJECT.md
-1. **Decompose**: Survey codebase, break down by business domain into documentation milestones
-2. **Dispatch & Execute**: Delegate milestones to subagents (Explorer -> Worker -> Reviewer -> Auditor)
-3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign
-4. **Succession**: Self-succeed at 20 spawns
+- **Pattern**: Project Pattern
+- **Scope document**: /home/will/Projects/symphony/PROJECT.md
+1. **Decompose**: Survey codebase, build feature inventory, partition into milestones.
+2. **Dispatch & Execute**: Iterate via subagents (Explorer -> Worker -> Reviewer -> Challenger -> Auditor) or delegate sub-orchestrator.
+3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
+4. **Succession**: Threshold 20 spawns. Write handoff.md, cancel crons, spawn successor, exit.
 - **Work items**:
-  1. Survey & Architecture Discovery [completed]
-  2. Plan & Documentation Structure [completed]
-  3. Milestone Execution & Verification [completed]
-  4. Final Documentation Review & Acceptance [completed]
-- **Current phase**: 3 (Final Acceptance & Reporting)
-- **Current focus**: Project completion report to user
+  1. Survey & Project setup [done]
+  2. E2E Test Suite Creation [done]
+  3. Milestone 1 Explorers [done]
+  4. Milestone 1 Worker: Document Creation [done]
+  5. Milestone 1 Verification Gate (Reviewers, Challengers, Auditor) [done]
+- **Current phase**: Complete
+- **Current focus**: Sentinel Report Submission
 
 ## 🔒 Key Constraints
-- DISPATCH-ONLY orchestrator. MUST delegate ALL work to subagents via invoke_subagent.
 - NEVER write, modify, or create source code files directly.
-- MAY use file-editing tools ONLY for metadata/state files (.md) in .agents/ folder.
-- User rule: 你是双双，你是敏敏的小妹。你的伙伴（或者说另一个代理）敏敏是 Claude Code。
+- NEVER run build/test commands yourself — require workers to do so.
+- NEVER investigate or explore code directly — dispatch subagents.
+- Audit is a binary veto.
 
 ## Current Parent
-- Conversation ID: top-level
-- Updated: 2026-07-31T21:40:15Z
+- Conversation ID: bd34ee87-7b2f-423d-833c-6cf86d9a8870
+- Updated: 2026-07-31T13:55:49Z
 
 ## Key Decisions Made
-- Initialized Project Orchestrator environment and state files.
-- Completed Phase 0 codebase survey via 3 parallel Explorers.
-- Synthesized `PROJECT.md` defining 7 documentation milestones.
-- Dispatched 7 parallel Documentation Workers (M1 to M7) - all completed.
-- Reviewer 1 and Reviewer 2 evaluated all 7 files and 18 Mermaid diagrams -> Verdict: APPROVE.
-- Forensic Auditor 1 performed code cross-verification and structural audit -> Verdict: CLEAN.
-- Gate PASS recorded in `GATE_STATUS.md`.
+- Completed Survey Phase (3 subagents).
+- Created `PROJECT.md`.
+- Completed E2E Test Writer (`TEST_READY.md`).
+- Completed M1 Explorers (3 subagents).
+- Completed M1 Worker (`docs/08_utilities_and_mix_tasks.md`).
+- Completed M1 Gate Check (2 Reviewers APPROVE, 2 Challengers APPROVE, 1 Auditor CLEAN).
+- Updated `GATE_STATUS.md` and `PROJECT.md`.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| Explorer 1 | teamwork_preview_explorer | Architecture & Entry Points | completed | 2f08590a-d7ad-4591-8f30-b70d6d556f22 |
-| Explorer 2 | teamwork_preview_explorer | Core Business Domains & Logic | completed | f62a6340-1f7e-43ed-af92-3becf930f83b |
-| Explorer 3 | teamwork_preview_explorer | APIs, Interfaces & Dependencies | completed | 1cc46ec4-0833-46c9-b216-84ce0d3902e6 |
-| Worker M1 | teamwork_preview_worker | `docs/01_architecture_overview.md` | completed | 52fad2b3-3500-45ea-bd3b-8358306fe835 |
-| Worker M2 | teamwork_preview_worker | `docs/02_workflow_and_config.md` | completed | 15fc5783-3ac6-49f7-b69e-aa63141693e1 |
-| Worker M3 | teamwork_preview_worker | `docs/03_issue_tracker_integration.md` | completed | 8f76e90f-b5df-4bfc-91e3-c4098021a459 |
-| Worker M4 | teamwork_preview_worker | `docs/04_orchestration_engine.md` | completed | 68bf019a-fead-48aa-a808-bc9d876ba90e |
-| Worker M5 | teamwork_preview_worker | `docs/05_workspace_management.md` | completed | a0e771f3-f618-4afd-ba65-df112d380836 |
-| Worker M6 | teamwork_preview_worker | `docs/06_agent_execution_and_codex.md` | completed | 70f305b1-a86a-4e73-9b9b-0d6c784460e6 |
-| Worker M7 | teamwork_preview_worker | `docs/07_observability_and_ui.md` | completed | 67dfdcf4-7604-4f3b-8742-cedaa23ddf9b |
-| Reviewer 1 | teamwork_preview_reviewer | Documentation Quality & Completeness | completed (APPROVE) | f5663218-91ab-4764-b564-5e0f417ca9d1 |
-| Reviewer 2 | teamwork_preview_reviewer | Technical Accuracy & Mermaid Syntax | completed (APPROVE) | 5ef23d50-ea16-438f-ba65-df112d380836 |
-| Auditor 1 | teamwork_preview_auditor | Forensic Integrity Audit | completed (CLEAN) | c1d8f9dc-e041-49a9-ae56-b5562c934c98 |
+| survey_1 | teamwork_preview_explorer | Survey error_html, error_json, log_file | done | 8b660a47-30d1-472d-9d7e-17c307ef34e7 |
+| survey_2 | teamwork_preview_explorer | Survey pr_body.check, specs.check | done | dd57bf31-a07c-4dea-87fd-cbc4390019ef |
+| survey_3 | teamwork_preview_spec_miner | Survey docs/ & requirements | done | c5fed086-b2d7-445e-b8a4-1a20d62a7b28 |
+| e2e_test_writer_1 | teamwork_preview_test_writer | E2E verification test suite | done | 7c08e319-7224-40de-8b6b-9d5d64b9e3b8 |
+| explorer_m1_1 | teamwork_preview_explorer | Doc Structure Explorer | done | 5ed004f7-d42a-49d4-bb23-7cdd42f9d4d2 |
+| explorer_m1_2 | teamwork_preview_explorer | Tech Accuracy Explorer | done | 54578f59-42df-4f93-9774-e0165f6670f1 |
+| spec_miner_m1_3 | teamwork_preview_spec_miner | Mermaid Spec Miner | done | ac08b7ff-515b-4903-a9c3-e7dcdb73cae5 |
+| worker_m1_1 | teamwork_preview_worker | Write docs/08_utilities_and_mix_tasks.md | done | a666acf3-3c83-43ee-9435-711cc2b647c5 |
+| reviewer_m1_1 | teamwork_preview_reviewer | Quality Review | done | a9135bea-13f3-4116-bb04-1fe3f8e1f1c9 |
+| reviewer_m1_2 | teamwork_preview_reviewer | Mermaid & Tech Specs Review | done | 2676c9b3-1a2a-4765-84d4-c7abb14c8d80 |
+| challenger_m1_1 | teamwork_preview_challenger | E2E Test Execution | done | 2cfae106-0b72-4088-909d-c3217457cb67 |
+| challenger_m1_2 | teamwork_preview_challenger | Syntax & Content Stress Test | done | 6b48f055-b9ed-44ac-99a3-490120b8ed4f |
+| auditor_m1_1 | teamwork_preview_auditor | Forensic Integrity Audit | done | 1dc60aa3-c791-4248-bcf4-a9cb0ba24523 |
 
 ## Succession Status
 - Succession required: no
@@ -73,10 +74,10 @@ Comprehensively investigate Symphony codebase, generate domain-specific document
 - Safety timer: none
 
 ## Artifact Index
-- /home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md — Verbatim user request
+- /home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md — Original request
+- /home/will/Projects/symphony/PROJECT.md — Scope & Architecture
+- /home/will/Projects/symphony/TEST_READY.md — E2E Test Suite Manifest
+- /home/will/Projects/symphony/docs/08_utilities_and_mix_tasks.md — Generated Documentation
 - /home/will/Projects/symphony/.agents/orchestrator/DISPATCH.md — Dispatch log
-- /home/will/Projects/symphony/.agents/orchestrator/BRIEFING.md — Persistent briefing index
-- /home/will/Projects/symphony/.agents/orchestrator/plan.md — Master plan
-- /home/will/Projects/symphony/.agents/orchestrator/progress.md — Liveness & progress tracker
-- /home/will/Projects/symphony/.agents/orchestrator/PROJECT.md — Master project & milestone definition
-- /home/will/Projects/symphony/.agents/orchestrator/GATE_STATUS.md — Final gate verification result
+- /home/will/Projects/symphony/.agents/orchestrator/progress.md — Progress log
+- /home/will/Projects/symphony/.agents/orchestrator/GATE_STATUS.md — Gate status log

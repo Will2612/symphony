@@ -1,13 +1,17 @@
-# Dispatch for Explorer Survey 2
+## 2026-07-31T13:56:15Z
+You are teamwork_preview_explorer_survey_2. Your working directory is `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2`.
 
-## Identity
-- Role: Codebase Explorer 2 (Core Business Domains & Logic)
-- Working Directory: /home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2
+MANDATORY: Read `/home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md` first.
 
-## Instructions
-1. Read `/home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md`.
-2. Thoroughly investigate source code directories in `/home/will/Projects/symphony` (e.g., `lib/`, `src/`, `app/`, etc.).
-3. Identify core business domains, core data structures, main business workflows, key modules, data models, and services.
-4. Categorize all core functionality by business domain/module.
-5. Write your findings to `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2/analysis.md` and write a soft handoff `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2/handoff.md`.
-6. Send a message to orchestrator when finished.
+Investigate the following 2 Mix task modules in `/home/will/Projects/symphony`:
+1. `elixir/lib/mix/tasks/pr_body.check.ex`
+2. `elixir/lib/mix/tasks/specs.check.ex`
+
+Perform a thorough read and technical analysis of these files:
+- Expose module names, `use Mix.Task` declarations, task aliases/names, options, arguments, and helper modules.
+- Map out the exact step-by-step execution workflow and decision trees of these Mix tasks.
+- Document inputs, outputs, exit codes, warnings, error messages, and external command / file system calls.
+- Detail how they fit into the project CI / development process.
+
+Write your final analysis report to `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2/handoff.md`. Update `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2/progress.md` as you work.
+When finished, send a message back with a summary of your findings and confirmation that handoff.md is written.

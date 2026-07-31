@@ -1,26 +1,38 @@
 # Original User Request
 
-## Initial Request — 2026-07-31T21:29:46Z
+## 2026-07-31T13:55:38Z
 
-You are the Project Orchestrator for project Symphony.
+# Teamwork Project Prompt — Draft
 
-Workspace directory: /home/will/Projects/symphony
-Your working directory: /home/will/Projects/symphony/.agents/orchestrator
-Original request file: /home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md
+> Status: Ready for launch — awaiting user approval
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
 
-Mission:
-Comprehensively investigate the codebase, draw diagrams to explain its contents, breaking it down by business domain/feature, and generating specific documentation for each core module in `docs/`.
+Investigate the previously undocumented utility and mix task modules in the codebase and generate a dedicated Markdown document for them to complete our 100% coverage goal.
 
-Requirements:
-R1. Repository Analysis: Analyze the repository to understand overall architecture, key components, and core business domains.
-R2. Documentation Generation: Generate detailed Markdown documentation in `docs/` directory within the project, including overall system overview and separate dedicated documents for each core domain/module.
-R3. Diagram Creation: Embed Mermaid diagrams (system architecture, module dependency/class diagrams, sequence diagrams).
+Working directory: /home/will/Projects/symphony
+Integrity mode: development
 
-Acceptance Criteria:
-- `docs/` directory created in repo root.
-- `docs/` contains overall overview document and multiple domain-specific documents.
-- Every document contains at least one Mermaid diagram block.
-- All Mermaid diagrams possess valid syntax.
-- Documentation accurately reflects current state and structure of codebase.
+## Requirements
 
-Please create your directory `.agents/orchestrator/`, initialize `plan.md` and `progress.md`, dispatch tasks to specialists, monitor progress, and report completion when all milestones are finished.
+### R1. Target Modules Analysis
+Analyze the following specific files that were previously uncovered or only briefly mentioned:
+- `elixir/lib/symphony_elixir_web/error_html.ex`
+- `elixir/lib/symphony_elixir_web/error_json.ex`
+- `elixir/lib/symphony_elixir/log_file.ex`
+- `elixir/lib/mix/tasks/pr_body.check.ex`
+- `elixir/lib/mix/tasks/specs.check.ex`
+
+### R2. Documentation Generation
+Generate a detailed Markdown document named `08_utilities_and_mix_tasks.md` in the `docs/` directory. It should provide a deep dive into the functionality, logic, and structure of these 5 modules.
+
+### R3. Diagram Creation
+Embed at least one Mermaid diagram within the Markdown documentation to illustrate the workflow, data flow, or architectural dependencies of these utilities (e.g., a flowchart for the custom Mix tasks).
+
+## Acceptance Criteria
+
+### Verification
+- [ ] A new file `docs/08_utilities_and_mix_tasks.md` is created.
+- [ ] The document explicitly details all 5 target modules.
+- [ ] The document contains at least one Mermaid diagram block.
+- [ ] The Mermaid diagram possesses valid syntax and can be rendered without errors.
+- [ ] The documentation accurately reflects the current state of these modules in the codebase.

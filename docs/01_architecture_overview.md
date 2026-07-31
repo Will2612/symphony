@@ -49,6 +49,7 @@ symphony/
 │   ├── 05_workspace_management.md
 │   ├── 06_agent_execution_and_codex.md
 │   ├── 07_observability_and_ui.md
+│   ├── 08_utilities_and_mix_tasks.md
 │   ├── symphony-smoke-board-review.md
 │   └── symphony-smoke-test-one.md
 ├── elixir/                  # Elixir Reference Implementation

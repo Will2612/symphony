@@ -1,82 +1,175 @@
-# Handoff Report — Explorer 1 (Architecture & Entry Points)
+# Handoff Report: Elixir Utility Modules Technical Survey
+
+**Author Agent**: `teamwork_preview_explorer_survey_1`  
+**Working Directory**: `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1`  
+**Target Project Directory**: `/home/will/Projects/symphony`  
+**Target Modules Analyzed**:
+1. `SymphonyElixirWeb.ErrorHTML` (`elixir/lib/symphony_elixir_web/error_html.ex`)
+2. `SymphonyElixirWeb.ErrorJSON` (`elixir/lib/symphony_elixir_web/error_json.ex`)
+3. `SymphonyElixir.LogFile` (`elixir/lib/symphony_elixir/log_file.ex`)
+
+---
 
 ## 1. Observation
 
-- **Root Directory Structure**:
-  - `SPEC.md`: 2170 lines, language-agnostic specification defining 8 core system components.
-  - `README.md`: Describes Symphony's mission and setup.
-  - `elixir/`: Main Elixir reference implementation folder.
+### Target Module 1: `SymphonyElixirWeb.ErrorHTML`
+- **File Location**: `elixir/lib/symphony_elixir_web/error_html.ex` (Lines 1–9)
+- **Module Name**: `SymphonyElixirWeb.ErrorHTML`
+- **Annotations**: `@moduledoc false`
+- **Source Code**:
+  ```elixir
+  defmodule SymphonyElixirWeb.ErrorHTML do
+    @moduledoc false
 
-- **Elixir Project Manifest (`elixir/mix.exs`)**:
-  - `app`: `:symphony_elixir`, `version`: `"0.1.0"`, `elixir`: `"~> 1.19"` (Lines 6-8).
-  - Main CLI module: `SymphonyElixir.CLI` targeting binary output `bin/symphony` (Lines 93-95).
-  - Application module: `{SymphonyElixir.Application, []}` (Line 58).
-  - Custom aliases: `setup: ["deps.get"]`, `build: ["escript.build"]`, `lint: ["specs.check", "credo --strict"]` (Lines 84-87).
-  - Dependencies include `bandit`, `phoenix`, `phoenix_live_view`, `req`, `jason`, `yaml_elixir`, `solid`, `ecto`, `credo`, `dialyxir`.
+    @spec render(String.t(), map()) :: String.t()
+    def render(template, _assigns) do
+      Phoenix.Controller.status_message_from_template(template)
+    end
+  end
+  ```
+- **Configuration Site**: `elixir/config/config.exs:8-11`:
+  ```elixir
+  config :symphony_elixir, SymphonyElixirWeb.Endpoint,
+    render_errors: [
+      formats: [html: SymphonyElixirWeb.ErrorHTML, json: SymphonyElixirWeb.ErrorJSON],
+      layout: false
+    ]
+  ```
+- **Specs Exclusion Site**: `elixir/mix.exs:31`: Listed in `ignore_modules` under `specs_check` config.
+- **Test File**: No dedicated test file found in `elixir/test/`. Framework error rendering is delegated to Phoenix Endpoint configuration.
 
-- **CLI Entry Point (`elixir/lib/symphony_elixir/cli.ex`)**:
-  - Function: `SymphonyElixir.CLI.main/1` (Line 21).
-  - Requires `--i-understand-that-this-will-be-running-without-the-usual-guardrails` switch (Line 8, 105).
-  - Accepts optional `--logs-root`, `--port`, and `[path-to-WORKFLOW.md]` (Line 9, 34-47).
-  - Boots application with `Application.ensure_all_started(:symphony_elixir)` (Line 85).
+---
 
-- **OTP Application Supervisor (`elixir/lib/symphony_elixir.ex`)**:
-  - `SymphonyElixir.Application.start/2` (Line 23) starts a `:one_for_one` supervisor tree with children:
-    1. `{Phoenix.PubSub, name: SymphonyElixir.PubSub}`
-    2. `{Task.Supervisor, name: SymphonyElixir.TaskSupervisor}`
-    3. `SymphonyElixir.WorkflowStore`
-    4. `SymphonyElixir.Orchestrator`
-    5. `SymphonyElixir.HttpServer`
-    6. `SymphonyElixir.StatusDashboard`
+### Target Module 2: `SymphonyElixirWeb.ErrorJSON`
+- **File Location**: `elixir/lib/symphony_elixir_web/error_json.ex` (Lines 1–9)
+- **Module Name**: `SymphonyElixirWeb.ErrorJSON`
+- **Annotations**: `@moduledoc false`
+- **Source Code**:
+  ```elixir
+  defmodule SymphonyElixirWeb.ErrorJSON do
+    @moduledoc false
 
-- **Core Module Locations**:
-  - `elixir/lib/symphony_elixir/orchestrator.ex`: Main `GenServer` polling state machine (Lines 1-1922).
-  - `elixir/lib/symphony_elixir/workflow.ex` & `workflow_store.ex`: Parses YAML front-matter and Liquid prompt template from `WORKFLOW.md`.
-  - `elixir/lib/symphony_elixir/config.ex` & `config/schema.ex`: Strict validation of configuration schema via Ecto.
-  - `elixir/lib/symphony_elixir/tracker.ex` & `linear/`: Behavior for task tracking with Linear GraphQL adapter and memory mock adapter.
-  - `elixir/lib/symphony_elixir/agent_runner.ex`: Worker process running individual issue turns under `Task.Supervisor`.
-  - `elixir/lib/symphony_elixir/codex/app_server.ex` & `dynamic_tool.ex`: JSON-RPC 2.0 stdio integration with Codex CLI and dynamic tool execution (`linear_graphql`).
-  - `elixir/lib/symphony_elixir/workspace.ex`: Per-issue workspace directory manager and lifecycle hook executor.
-  - `elixir/lib/symphony_elixir_web/`: Phoenix Web dashboard (`DashboardLive`), REST observability API (`ObservabilityApiController`), static asset controllers, router (`router.ex`), endpoint (`endpoint.ex`).
+    @spec render(String.t(), map()) :: map()
+    def render(template, _assigns) do
+      %{error: %{code: "request_failed", message: Phoenix.Controller.status_message_from_template(template)}}
+    end
+  end
+  ```
+- **Configuration Site**: `elixir/config/config.exs:8-11` (configured alongside `ErrorHTML`).
+- **Specs Exclusion Site**: `elixir/mix.exs:32`: Listed in `ignore_modules` under `specs_check` config.
+- **Test File**: No dedicated test file found in `elixir/test/`.
+
+---
+
+### Target Module 3: `SymphonyElixir.LogFile`
+- **File Location**: `elixir/lib/symphony_elixir/log_file.ex` (Lines 1–81)
+- **Module Name**: `SymphonyElixir.LogFile`
+- **Moduledoc**: `"Configures OTP's built-in rotating disk log handler for application logs."`
+- **Module Constants & Default Values**:
+  - `@handler_id :symphony_disk_log`
+  - `@default_log_relative_path "log/symphony.log"`
+  - `@default_max_bytes 10 * 1024 * 1024` (10 MB = 10,485,760 bytes)
+  - `@default_max_files 5`
+- **Function Signatures & Specs**:
+  1. `default_log_file/0`: `@spec default_log_file() :: Path.t()`
+     - Body: `default_log_file(File.cwd!())`
+  2. `default_log_file/1`: `@spec default_log_file(Path.t()) :: Path.t()`
+     - Guard: `when is_binary(logs_root)`
+     - Body: `Path.join(logs_root, @default_log_relative_path)`
+  3. `configure/0`: `@spec configure() :: :ok`
+     - Environment lookup keys:
+       - `:log_file` (fallback: `default_log_file()`)
+       - `:log_file_max_bytes` (fallback: `@default_max_bytes`)
+       - `:log_file_max_files` (fallback: `@default_max_files`)
+     - Workflow: Expands path, creates parent directory (`File.mkdir_p/1`), removes existing handler (`:logger.remove_handler(:symphony_disk_log)`), registers handler (`:logger.add_handler(:symphony_disk_log, :logger_disk_log_h, config)`), removes default console handler (`:logger.remove_handler(:default)`).
+- **Disk Handler Configuration Structure**:
+  ```elixir
+  %{
+    level: :all,
+    formatter: {:logger_formatter, %{single_line: true}},
+    config: %{
+      file: String.to_charlist(path), # Converts binary string to Erlang charlist
+      type: :wrap,                    # Rotating file mode
+      max_no_bytes: max_bytes,        # 10 MB per file by default
+      max_no_files: max_files         # 5 rotated files by default
+    }
+  }
+  ```
+- **Call Sites & Lifecycle Wiring**:
+  1. `elixir/lib/symphony_elixir.ex:24`: `SymphonyElixir.Application.start/2` calls `:ok = SymphonyElixir.LogFile.configure()` before starting supervisor children.
+  2. `elixir/lib/symphony_elixir/cli.ex:147`: `set_logs_root/1` sets `Application.put_env(:symphony_elixir, :log_file, LogFile.default_log_file(logs_root))` when CLI initializes.
+- **Specs Exclusion Site**: `elixir/mix.exs:27`: Listed in `ignore_modules` under `specs_check`.
+- **Test File**: `elixir/test/symphony_elixir/log_file_test.exs` (Lines 1–14):
+  ```elixir
+  defmodule SymphonyElixir.LogFileTest do
+    use ExUnit.Case, async: true
+    alias SymphonyElixir.LogFile
+
+    test "default_log_file/0 uses the current working directory" do
+      assert LogFile.default_log_file() == Path.join(File.cwd!(), "log/symphony.log")
+    end
+
+    test "default_log_file/1 builds the log path under a custom root" do
+      assert LogFile.default_log_file("/tmp/symphony-logs") == "/tmp/symphony-logs/log/symphony.log"
+    end
+  end
+  ```
 
 ---
 
 ## 2. Logic Chain
 
-1. **Root Directory Examination**: Observing `SPEC.md` alongside `elixir/` confirms that `SPEC.md` defines the normative 8-component specification for Symphony, and `elixir/` is the active Elixir reference implementation.
-2. **Build Configuration Examination**: `elixir/mix.exs` shows the project compiles to an escript executable (`bin/symphony`) via `mix build`, with `SymphonyElixir.CLI` as its main entry point and `SymphonyElixir.Application` as the OTP application callback.
-3. **Entry Point Tracing**: Tracing `SymphonyElixir.CLI.main/1` -> `Application.ensure_all_started(:symphony_elixir)` -> `SymphonyElixir.Application.start/2` confirms that booting Symphony initializes a centralized supervisor tree (`SymphonyElixir.Supervisor`).
-4. **Supervisor Child Tracing**: Inspecting child specifications shows the system architecture relies on:
-   - `SymphonyElixir.PubSub` for event broadcasting.
-   - `SymphonyElixir.TaskSupervisor` for isolated, async worker execution (`AgentRunner`).
-   - `SymphonyElixir.WorkflowStore` for caching parsed `WORKFLOW.md` settings.
-   - `SymphonyElixir.Orchestrator` for handling polling ticks, concurrency limits, and retry queues.
-   - `SymphonyElixir.HttpServer` for hosting Phoenix LiveView (`/`) and REST API (`/api/v1/*`).
-   - `SymphonyElixir.StatusDashboard` for ANSI terminal progress lines.
-5. **Codex Protocol Tracing**: Inspecting `Codex.AppServer` and `Codex.DynamicTool` reveals that Codex sessions communicate via JSON-RPC 2.0 over stdio (or SSH stdio), with `linear_graphql` exposed as a client-side dynamic tool.
+1. **HTML & JSON Error View Architecture**:
+   - `SymphonyElixirWeb.Endpoint` delegates HTTP error response rendering to `SymphonyElixirWeb.ErrorHTML` (for HTML requests) and `SymphonyElixirWeb.ErrorJSON` (for JSON API requests) based on format negotiated by Phoenix.
+   - `ErrorHTML.render/2` takes template names like `"404.html"` or `"500.html"`, extracts status reason phrases (e.g., `"Not Found"`, `"Internal Server Error"`) via `Phoenix.Controller.status_message_from_template/1`, and returns plain binary text strings.
+   - `ErrorJSON.render/2` takes template names like `"404.json"`, extracts status reason phrases via the same helper, and constructs a structured payload: `%{error: %{code: "request_failed", message: "<reason_phrase>"}}`. Phoenix serializes this map to JSON via Jason encoder.
+
+2. **OTP Rotating Disk Logger Architecture**:
+   - `SymphonyElixir.LogFile` abstracts Erlang/OTP `:logger` configuration to store single-line formatted logs in a rotating set of files.
+   - During OTP application startup (`SymphonyElixir.Application.start/2`), `LogFile.configure()` runs synchronously before any worker or supervisor is started.
+   - If the CLI specifies a custom log root directory, `CLI.set_logs_root/1` updates application environment variable `:log_file` prior to starting the application tree.
+   - `setup_disk_handler/3` converts the file path string to an Erlang charlist (`String.to_charlist/1`), ensures the parent directory exists on disk, unregisters any existing `:symphony_disk_log` handler, adds the `:logger_disk_log_h` handler with level `:all` and `:wrap` log mode, and finally detaches the default stdout console handler `:default`.
+   - Error handling is fault-tolerant: if `:logger.add_handler/3` fails, `LogFile` captures `{:error, reason}`, logs a warning via `Logger.warning/1`, and returns `:ok` to prevent startup crash.
 
 ---
 
 ## 3. Caveats
 
-- **External Integrations**: Deep runtime testing of live Linear GraphQL calls or live Codex CLI execution was not conducted in this read-only investigation turn.
-- **Remote SSH Worker Verification**: `SSH` worker host handling in `AgentRunner` and `Workspace` was analyzed structurally from code; remote SSH infrastructure was not executed or tested.
+1. **Interactive Test Execution**: The shell tool execution for `mix test` timed out waiting for user confirmation in read-only environment. All observations were verified via direct source code examination, static analysis, and existing ExUnit test file inspection (`elixir/test/symphony_elixir/log_file_test.exs`).
+2. **Framework Integration Tests**: `ErrorHTML` and `ErrorJSON` do not have dedicated unit tests in `elixir/test/`, as they are standard Phoenix error views tested implicitly through Phoenix framework endpoint behavior.
+3. **Erlang Type Conversion**: Note that `:logger_disk_log_h` requires file paths to be Erlang charlists (`String.to_charlist/1`). Passing Elixir UTF-8 binaries directly to `:logger_disk_log_h` would fail at Erlang runtime.
 
 ---
 
 ## 4. Conclusion
 
-Symphony is a modular, OTP-structured Elixir daemon application designed for autonomous coding agent orchestration. It cleanly separates workflow policy (`WORKFLOW.md`) from scheduling mechanics (`SymphonyElixir.Orchestrator`), workspace management (`SymphonyElixir.Workspace`), agent protocol communication (`Codex.AppServer`), and real-time observability (`SymphonyElixirWeb`). The codebase is fully explored and documented in `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/analysis.md`.
+All 3 modules are concise, single-responsibility utilities in the Symphony Elixir architecture:
+- `ErrorHTML` & `ErrorJSON` form the web layer's HTTP error presentation boundary, returning clean, unified error responses for HTML and JSON endpoints.
+- `LogFile` forms the core system logging layer, configuring Erlang OTP's built-in `:logger_disk_log_h` rotating log handler with 10MB chunk rotation and a maximum of 5 log archives.
+
+These details provide complete, exact, line-referenced documentation requirements for the technical author building `docs/08_utilities_and_mix_tasks.md`.
 
 ---
 
 ## 5. Verification Method
 
-1. **Inspect Analysis Report**:
-   - `view_file` on `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/analysis.md`.
-2. **Verify Mix Alias and Compilation (Dry Run)**:
-   - Run `mix help` or `mix specs.check` inside `/home/will/Projects/symphony/elixir/` (if dependencies are compiled).
-3. **Inspect Core Files**:
-   - Entry points: `elixir/lib/symphony_elixir/cli.ex` and `elixir/lib/symphony_elixir.ex`.
-   - Orchestrator: `elixir/lib/symphony_elixir/orchestrator.ex`.
-   - Router: `elixir/lib/symphony_elixir_web/router.ex`.
+To verify these findings independently:
+
+1. **Inspect Module Definitions**:
+   ```bash
+   view_file elixir/lib/symphony_elixir_web/error_html.ex
+   view_file elixir/lib/symphony_elixir_web/error_json.ex
+   view_file elixir/lib/symphony_elixir/log_file.ex
+   ```
+2. **Inspect Configuration & Application Wiring**:
+   ```bash
+   grep_search Query: "ErrorHTML" SearchPath: "elixir"
+   grep_search Query: "LogFile" SearchPath: "elixir"
+   ```
+3. **Run Unit Tests**:
+   ```bash
+   mix test test/symphony_elixir/log_file_test.exs
+   ```
+4. **Invalidation Conditions**:
+   - The analysis would be invalidated if `LogFile` handler ID, default log path (`"log/symphony.log"`), chunk size (10MB), or rotated file count (5) were altered in `log_file.ex`.
+   - The error structure for `ErrorJSON` would be invalidated if the output key structure changes from `%{error: %{code: "request_failed", message: ...}}`.

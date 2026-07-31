@@ -1,36 +1,43 @@
-# BRIEFING — 2026-07-31T21:32:55+08:00
+# BRIEFING — 2026-07-31T21:58:15Z
 
 ## Mission
-Explore `/home/will/Projects/symphony` source files to identify core business domains, core data models, key services, and business logic modules. Categorize all core functionality into logical business domains and produce analysis.md and handoff.md.
+Technical analysis of Mix tasks `pr_body.check.ex` and `specs.check.ex` in `elixir/lib/mix/tasks/`.
 
 ## 🔒 My Identity
-- Archetype: Explorer
-- Roles: Explorer 2 (Core Business Domains & Logic)
+- Archetype: Teamwork explorer
+- Roles: Read-only investigation and technical analysis of Mix task scripts
 - Working directory: /home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2
-- Original parent: 5ebf6aa6-a8a8-44e2-8e8d-4e1289a30bfc
-- Milestone: Explorer Survey
+- Original parent: c508551d-f5f5-4f10-a5c3-363207661752
+- Milestone: Mix task survey survey_2
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement code changes in the project repository
-- Focus on business domains, core data models, key services, workflows, and business logic modules
-- Write output to analysis.md and handoff.md in working directory
+- Read-only investigation — do NOT implement code changes in project source files
+- Deliver handoff report at `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_2/handoff.md`
 
 ## Current Parent
-- Conversation ID: 5ebf6aa6-a8a8-44e2-8e8d-4e1289a30bfc
-- Updated: 2026-07-31T21:32:55+08:00
+- Conversation ID: c508551d-f5f5-4f10-a5c3-363207661752
+- Updated: 2026-07-31T21:58:15Z
 
 ## Investigation State
-- **Explored paths**: `SPEC.md`, `README.md`, `elixir/lib/symphony_elixir/`, `elixir/lib/symphony_elixir_web/`, `elixir/test/`
-- **Key findings**: Identified 6 primary business domains (Workflow & Policy, Tracker Integration, Orchestration Engine, Workspace & Sandbox, Agent Execution & Codex, Observability Surface), full state machine, data models (`Issue`, `Config.Schema`, `Orchestrator.State`, `Workspace`, `LiveSession`), and execution workflow logic.
-- **Unexplored areas**: None within scope.
+- **Explored paths**:
+  - `elixir/lib/mix/tasks/pr_body.check.ex`
+  - `elixir/lib/mix/tasks/specs.check.ex`
+  - `elixir/lib/symphony_elixir/specs_check.ex`
+  - `.github/workflows/pr-description-lint.yml`
+  - `.github/workflows/make-all.yml`
+  - `elixir/mix.exs`
+  - `elixir/Makefile`
+  - `elixir/test/mix/tasks/pr_body_check_test.exs`
+  - `elixir/test/mix/tasks/specs_check_task_test.exs`
+  - `elixir/test/symphony_elixir/specs_check_test.exs`
+- **Key findings**: Detailed workflows, CLI options, error messages, regex patterns, AST parsing logic, and CI/Makefile integration documented for both tasks.
+- **Unexplored areas**: None (investigation complete).
 
 ## Key Decisions Made
-- Categorized codebase into 6 distinct business domains.
-- Documented full architectural details in `analysis.md` and `handoff.md`.
+- Completed deep dive analysis and produced 5-component handoff report.
 
 ## Artifact Index
-- DISPATCH.md — Initial dispatch instructions
-- BRIEFING.md — Working memory state
-- progress.md — Liveness heartbeat and progress tracking
-- analysis.md — Detailed core business domains & logic analysis report
-- handoff.md — 5-component handoff report for orchestrator
+- DISPATCH.md — incoming dispatch instructions
+- BRIEFING.md — persistent state briefing
+- progress.md — liveness heartbeat
+- handoff.md — final analysis report

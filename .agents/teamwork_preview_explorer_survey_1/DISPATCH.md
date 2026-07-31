@@ -1,12 +1,19 @@
-# Dispatch for Explorer Survey 1
+## 2026-07-31T13:56:15Z
 
-## Identity
-- Role: Codebase Explorer 1 (Architecture & Entry Points)
-- Working Directory: /home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1
+You are teamwork_preview_explorer_survey_1. Your working directory is `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1`.
 
-## Instructions
-1. Read `/home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md`.
-2. Inspect `/home/will/Projects/symphony` directory structure, configuration files (e.g. mix.exs, package.json, Cargo.toml, go.mod, pyproject.toml, etc. depending on language), dependencies, build system, main entry points, and top-level organization.
-3. Identify main components, runtime architecture, configuration management, and build infrastructure.
-4. Write your findings to `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/analysis.md` and write a soft handoff `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/handoff.md`.
-5. Send a message to orchestrator when finished.
+MANDATORY: Read `/home/will/Projects/symphony/.agents/ORIGINAL_REQUEST.md` first.
+
+Investigate the following 3 Elixir utility modules in `/home/will/Projects/symphony`:
+1. `elixir/lib/symphony_elixir_web/error_html.ex`
+2. `elixir/lib/symphony_elixir_web/error_json.ex`
+3. `elixir/lib/symphony_elixir/log_file.ex`
+
+Perform a thorough read and technical analysis of these files:
+- Expose all module names, functions, structs, types, macros, and configuration dependencies.
+- Explain the logic, flow, parameters, return values, error handling, and runtime behavior of each module.
+- Check for existing tests or callers in the codebase.
+- Provide clear notes on how each module works so that a technical documentation author can write an accurate deep dive.
+
+Write your final analysis report to `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/handoff.md`. Update `/home/will/Projects/symphony/.agents/teamwork_preview_explorer_survey_1/progress.md` as you work.
+When finished, send a message back with a summary of your findings and confirmation that handoff.md is written.
